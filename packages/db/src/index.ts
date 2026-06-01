@@ -120,18 +120,106 @@ export async function upsertUserSettings(
   };
 }
 
+const memoryVaultRules = new Map<string, VaultRule[]>();
+
+function mapVaultRow(row: Record<string, unknown>): VaultRule {
+  return {
+    id: String(row.id),
+    userId: String(row.user_id),
+    ruleType: String(row.rule_type),
+    enabled: Boolean(row.enabled),
+    config: (row.config as Record<string, unknown>) ?? {},
+    updatedAt: String(row.updated_at),
+  };
+}
+
 export async function listVaultRules(userId: string): Promise<VaultRule[]> {
   const db = getSupabaseAdmin();
-  if (!db) return [];
+  if (!db) return memoryVaultRules.get(userId) ?? [];
   const { data } = await db.from('vault_rules').select('*').eq('user_id', userId);
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    userId: row.user_id,
-    ruleType: row.rule_type,
-    enabled: row.enabled,
-    config: row.config ?? {},
-    updatedAt: row.updated_at,
-  }));
+  return (data ?? []).map((row) => mapVaultRow(row));
+}
+
+export async function createVaultRule(
+  userId: string,
+  input: { ruleType: string; enabled?: boolean; config?: Record<string, unknown> },
+): Promise<VaultRule> {
+  const now = new Date().toISOString();
+  const db = getSupabaseAdmin();
+  if (!db) {
+    const rule: VaultRule = {
+      id: crypto.randomUUID(),
+      userId,
+      ruleType: input.ruleType,
+      enabled: input.enabled ?? true,
+      config: input.config ?? {},
+      updatedAt: now,
+    };
+    const list = memoryVaultRules.get(userId) ?? [];
+    list.push(rule);
+    memoryVaultRules.set(userId, list);
+    return rule;
+  }
+  const { data, error } = await db
+    .from('vault_rules')
+    .insert({
+      user_id: userId,
+      rule_type: input.ruleType,
+      enabled: input.enabled ?? true,
+      config: input.config ?? {},
+    })
+    .select('*')
+    .single();
+  if (error || !data) throw error ?? new Error('Failed to create vault rule');
+  return mapVaultRow(data);
+}
+
+export async function updateVaultRule(
+  userId: string,
+  ruleId: string,
+  patch: Partial<{ enabled: boolean; config: Record<string, unknown>; ruleType: string }>,
+): Promise<VaultRule | null> {
+  const db = getSupabaseAdmin();
+  if (!db) {
+    const list = memoryVaultRules.get(userId) ?? [];
+    const idx = list.findIndex((r) => r.id === ruleId);
+    if (idx < 0) return null;
+    const updated: VaultRule = {
+      ...list[idx],
+      ...patch,
+      config: patch.config ?? list[idx].config,
+      updatedAt: new Date().toISOString(),
+    };
+    list[idx] = updated;
+    memoryVaultRules.set(userId, list);
+    return updated;
+  }
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (patch.enabled !== undefined) payload.enabled = patch.enabled;
+  if (patch.config !== undefined) payload.config = patch.config;
+  if (patch.ruleType !== undefined) payload.rule_type = patch.ruleType;
+  const { data, error } = await db
+    .from('vault_rules')
+    .update(payload)
+    .eq('id', ruleId)
+    .eq('user_id', userId)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapVaultRow(data) : null;
+}
+
+export async function deleteVaultRule(userId: string, ruleId: string): Promise<boolean> {
+  const db = getSupabaseAdmin();
+  if (!db) {
+    const list = memoryVaultRules.get(userId) ?? [];
+    const next = list.filter((r) => r.id !== ruleId);
+    memoryVaultRules.set(userId, next);
+    return next.length !== list.length;
+  }
+  const { error } = await db.from('vault_rules').delete().eq('id', ruleId).eq('user_id', userId);
+  if (error) throw error;
+  return true;
 }
 
 export async function getCasinoScores(): Promise<
@@ -142,11 +230,35 @@ export async function getCasinoScores(): Promise<
   const { data } = await db.from('casino_scores').select('*');
   return (data ?? []).map((row) => ({
     casinoName: row.casino_name,
-    currentScore: row.current_score,
+    currentScore: Number(row.current_score),
     riskLevel: row.risk_level,
     events24h: row.events_24h ?? 0,
     updatedAt: row.updated_at,
   }));
+}
+
+export async function upsertCasinoScores(
+  rows: Array<{
+    casinoName: string;
+    currentScore: number;
+    riskLevel: string;
+    events24h?: number;
+  }>,
+): Promise<number> {
+  const db = getSupabaseAdmin();
+  if (!db) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required to seed casino_scores');
+  }
+  const payload = rows.map((row) => ({
+    casino_name: row.casinoName,
+    current_score: row.currentScore,
+    risk_level: row.riskLevel,
+    events_24h: row.events24h ?? 0,
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await db.from('casino_scores').upsert(payload, { onConflict: 'casino_name' });
+  if (error) throw error;
+  return payload.length;
 }
 
 function mapUser(row: Record<string, unknown>): ApiUser {

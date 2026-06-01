@@ -6,6 +6,15 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isWatch = process.argv.includes('--watch');
 
+const define = {
+  'process.env.EXTENSION_API_URL': JSON.stringify(
+    process.env.EXTENSION_API_URL || 'http://localhost:3001',
+  ),
+  'process.env.EXTENSION_WEB_URL': JSON.stringify(
+    process.env.EXTENSION_WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000',
+  ),
+};
+
 async function build() {
   const dist = path.join(__dirname, 'dist');
   await fs.rm(dist, { recursive: true, force: true });
@@ -19,6 +28,7 @@ async function build() {
     platform: 'browser',
     target: 'chrome100',
     minify: true,
+    define,
   });
 
   await esbuild.build({
@@ -29,6 +39,7 @@ async function build() {
     platform: 'browser',
     target: 'chrome100',
     minify: true,
+    define,
   });
 
   await fs.copyFile(path.join(__dirname, 'src/manifest.json'), path.join(dist, 'manifest.json'));

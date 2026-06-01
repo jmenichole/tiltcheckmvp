@@ -40,6 +40,9 @@ export default function Home() {
             <Link href="/casinos" className="hero-actions__secondary-link">
               CHECK CASINO TRUST
             </Link>
+            <Link href="/bonuses" className="hero-actions__secondary-link">
+              TODAY&apos;S BONUSES
+            </Link>
           </div>
         </div>
       </section>

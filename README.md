@@ -32,6 +32,9 @@ Roadmap and ship gates: **[docs/phases.md](./docs/phases.md)** (source of truth)
 ## Docs
 
 - [phases.md](./docs/phases.md) — combined phase plan (acquisition + session loop + cutover)
+- [manual-tasks.md](./docs/manual-tasks.md) — checklist for Supabase, Railway, Discord, DNS (you)
+- [tech-stack.md](./docs/tech-stack.md) — locked stack (pnpm, Next 16, Hono, Supabase, Railway)
 - [migration-from-v1.md](./docs/migration-from-v1.md)
-- [deploy.md](./docs/deploy.md)
+- [deploy.md](./docs/deploy.md) — Railway web + API, env matrix, E2E
 - [cutover-checklist.md](./docs/cutover-checklist.md)
+- [v1-ops.md](./docs/v1-ops.md) — legacy monorepo ops until full cutover

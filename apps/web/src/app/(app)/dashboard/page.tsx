@@ -1,12 +1,16 @@
 'use client';
 
-// TODO(phase-plan): Phase 2 cutover = Profile + Vault tabs only. Buddies is Phase 3.
-// Safety/settings can ship with Phase 2 API but must not block vault CRUD + enforcement testing.
-
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
-type Tab = 'profile' | 'safety' | 'vault' | 'buddies';
+type Tab = 'profile' | 'vault';
+
+interface VaultRule {
+  id: string;
+  ruleType: string;
+  enabled: boolean;
+  config: { durationMinutes?: number };
+}
 
 export default function DashboardPage() {
   const [tab, setTab] = useState<Tab>('profile');
@@ -16,7 +20,8 @@ export default function DashboardPage() {
     notificationsEnabled: true,
     demoMode: false,
   });
-  const [vaultRules, setVaultRules] = useState<unknown[]>([]);
+  const [vaultRules, setVaultRules] = useState<VaultRule[]>([]);
+  const [sessionCapMinutes, setSessionCapMinutes] = useState(5);
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -26,10 +31,19 @@ export default function DashboardPage() {
     apiFetch('/user/settings')
       .then((r) => r.json())
       .then((data) => data.settings && setSettings(data.settings));
-    apiFetch('/vault')
-      .then((r) => r.json())
-      .then((data) => setVaultRules(data.rules ?? []));
+    refreshVault();
   }, []);
+
+  async function refreshVault() {
+    const res = await apiFetch('/vault');
+    if (!res.ok) return;
+    const data = await res.json();
+    setVaultRules(data.rules ?? []);
+    const cap = (data.rules as VaultRule[] | undefined)?.find((r) => r.ruleType === 'session_cap');
+    if (cap?.config?.durationMinutes) {
+      setSessionCapMinutes(cap.config.durationMinutes);
+    }
+  }
 
   async function saveSettings() {
     setStatus('Saving...');
@@ -40,6 +54,25 @@ export default function DashboardPage() {
     setStatus(res.ok ? 'Saved' : 'Failed');
   }
 
+  async function saveSessionCap() {
+    setStatus('Saving vault rule...');
+    const res = await apiFetch('/vault', {
+      method: 'POST',
+      body: JSON.stringify({
+        ruleType: 'session_cap',
+        enabled: true,
+        config: { durationMinutes: sessionCapMinutes },
+      }),
+    });
+    if (res.ok) {
+      await refreshVault();
+      setStatus('Vault rule saved — extension will enforce on critical tilt.');
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setStatus(err.error ?? 'Failed to save vault rule');
+    }
+  }
+
   return (
     <main className="public-page text-white min-h-screen">
       <section className="public-page-section px-4 pt-8">
@@ -47,7 +80,7 @@ export default function DashboardPage() {
           <h1 className="landing-hero-title text-3xl">Dashboard</h1>
           <p className="text-gray-400 mb-6">Welcome{user ? `, ${user.username}` : ''}.</p>
           <div className="flex flex-wrap gap-2 mb-6">
-            {(['profile', 'safety', 'vault', 'buddies'] as Tab[]).map((t) => (
+            {(['profile', 'vault'] as Tab[]).map((t) => (
               <button
                 key={t}
                 type="button"
@@ -60,13 +93,8 @@ export default function DashboardPage() {
           </div>
 
           {tab === 'profile' && (
-            <div className="public-page-card">
-              <p>Discord profile sync. Avatar: {user?.avatarUrl ? 'set' : 'none'}</p>
-            </div>
-          )}
-
-          {tab === 'safety' && (
             <div className="public-page-card space-y-3">
+              <p>Discord profile sync. Avatar: {user?.avatarUrl ? 'set' : 'none'}</p>
               <label className="block text-sm">
                 Risk profile
                 <select
@@ -90,24 +118,43 @@ export default function DashboardPage() {
                 Notifications
               </label>
               <button type="button" className="btn btn-primary btn-sm" onClick={saveSettings}>
-                Save settings
+                Save profile settings
               </button>
-              {status ? <p className="text-xs text-gray-400">{status}</p> : null}
             </div>
           )}
 
           {tab === 'vault' && (
-            <div className="public-page-card">
-              <p className="mb-2">Vault rules ({vaultRules.length})</p>
-              <p className="text-sm text-gray-400">POST /vault creates stub rules until Supabase is wired.</p>
+            <div className="public-page-card space-y-4">
+              <p className="text-sm text-gray-400">
+                Session cap: fullscreen lockout when the extension detects critical tilt.
+              </p>
+              <label className="block text-sm">
+                Lockout duration (minutes)
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  className="block mt-1 w-full bg-black/40 border border-white/10 p-2"
+                  value={sessionCapMinutes}
+                  onChange={(e) => setSessionCapMinutes(Number(e.target.value))}
+                />
+              </label>
+              <button type="button" className="btn btn-primary btn-sm" onClick={saveSessionCap}>
+                Save session cap
+              </button>
+              <p className="text-xs text-gray-500">
+                Active rules: {vaultRules.length}
+                {vaultRules.map((r) => (
+                  <span key={r.id} className="block">
+                    {r.ruleType} — {r.enabled ? 'on' : 'off'}{' '}
+                    {r.config?.durationMinutes ? `(${r.config.durationMinutes}m)` : ''}
+                  </span>
+                ))}
+              </p>
             </div>
           )}
 
-          {tab === 'buddies' && (
-            <div className="public-page-card">
-              <p className="text-gray-400">Buddies tab stub — Phase 2+ feature.</p>
-            </div>
-          )}
+          {status ? <p className="text-xs text-gray-400 mt-4">{status}</p> : null}
         </div>
       </section>
     </main>

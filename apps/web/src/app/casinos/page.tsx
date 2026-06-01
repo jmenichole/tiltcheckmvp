@@ -13,7 +13,6 @@ import {
   gradeFromNumericScore,
   type LiveTrustScore,
 } from '@tiltcheck/trust';
-import { apiBaseUrl } from '@/lib/api';
 
 const PAGE_SIZE = 18;
 
@@ -25,7 +24,7 @@ export default function CasinosPage() {
   const [liveSource, setLiveSource] = useState('unavailable');
 
   useEffect(() => {
-    fetch(`${apiBaseUrl()}/rgaas/casino-scores`, { cache: 'no-store' })
+    fetch('/api/backend/rgaas/casino-scores', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : null))
       .then((payload: { casinos?: LiveTrustScore[]; source?: string } | null) => {
         setLiveScores(Array.isArray(payload?.casinos) ? payload.casinos : []);

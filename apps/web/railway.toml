@@ -1,0 +1,8 @@
+# Railway service: web (set service root to monorepo root, or use these commands from apps/web)
+[build]
+buildCommand = "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web build"
+
+[deploy]
+startCommand = "cd ../.. && pnpm --filter @tiltcheck/web start"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

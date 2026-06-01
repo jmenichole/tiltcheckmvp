@@ -29,6 +29,7 @@ export function renderSidebar(root: HTMLElement, state: SidebarState) {
     window.open(url, '_blank', 'width=520,height=720');
   });
   panel.querySelector('#tc-vault')?.addEventListener('click', () => {
-    alert('Vault UI stub — syncs via API when logged in.');
+    const web = (typeof process !== 'undefined' && process.env?.EXTENSION_WEB_URL) || 'http://localhost:3000';
+    window.open(`${web}/dashboard`, '_blank');
   });
 }

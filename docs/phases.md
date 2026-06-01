@@ -61,7 +61,7 @@ Ship in order after cutover:
 
 1. **Analytics** — session summary
 2. **Buddies** — social/accountability (simplified)
-3. **Bonuses** — simplified offers surface
+3. **Bonuses** — full inbox list on Dashboard **Bonuses** tab; public **Today's picks** (2–3 cards) already on `/bonuses` ([bonuses.md](./bonuses.md)); crawler stays on v1 until ingest migrates
 
 Not required for DNS cutover.
 
@@ -165,54 +165,58 @@ Work top to bottom; do not start a lower block until the block above is done or 
 
 ## Current status (repo snapshot)
 
-_Last updated when combined phase plan was adopted._
+_Last updated: execution plan implementation (docs + trust API + vault + extension + E2E)._
 
-### Phase 1 — mostly scaffolded, needs data + deploy
+### Phase 1 — ready for Railway staging
 
 | Item | Status |
 |------|--------|
-| Web routes (`/`, `/extension`, `/casinos`, `/casinos/[slug]`, legal) | **Present** — pages exist |
-| `packages/trust` + `casinos.json` | **Present** — static catalog |
+| Web routes (`/`, `/extension`, `/casinos`, `/casinos/[slug]`, legal) | **Done** |
+| `packages/trust` + `casinos.json` | **Done** — v1 catalog ported |
 | `GET /health` | **Done** |
-| `GET /rgaas/casino-scores` | **Stub** — returns trust package / empty DB without migration |
-| v1 trust data migration | **Not done** — see [migration-from-v1.md](./migration-from-v1.md) |
-| Production deploy | **Not done** |
+| `GET /rgaas/casino-scores` | **Done** — DB merge + static fallback; v1 JSON shape |
+| Trust seed | **Script** — `pnpm seed:casino-scores` → Supabase `casino_scores` |
+| `/tools/*` primary nav | **Hidden** — pages remain with `noindex` |
+| [tech-stack.md](./tech-stack.md) + [deploy.md](./deploy.md) (Railway) | **Done** |
+| Production deploy | **Manual** — Railway web + api + Supabase staging |
 
-### Phase 2 — partial; blocks cutover
+### Phase 2 — implemented; needs env + staging sign-off
 
 | Item | Status |
 |------|--------|
-| Discord OAuth + sessions | **Scaffolded** — routes exist; needs env + Supabase |
-| User settings API | **Scaffolded** — works with Supabase or in-memory fallback |
-| Vault CRUD | **Read** wired; **POST stub** (`stub: true` in API) |
-| Extension tilt detector | **Scaffolded** — logic present, minimal background |
-| Extension enforcement + API sync | **Stub** — sidebar/background not production-ready |
-| `/login`, `/dashboard` | **Present** |
-| Dashboard Profile + Vault only | **Gap** — extra tabs (`safety`, `buddies`) ahead of plan; vault UI minimal |
-| Staging E2E gate | **Not run** |
+| Discord OAuth + sessions | **Done** — ext callback passes token to opener |
+| Vault CRUD | **Done** — POST/PATCH/DELETE via `packages/db` (no `stub: true`) |
+| `session_cap` rule type | **Done** — dashboard + API validation |
+| Extension enforcement | **Done** — Touch Grass overlay on high/critical tilt |
+| Extension vault sync | **Done** — Bearer token + `/vault` fetch |
+| `/login`, `/dashboard` | **Done** |
+| Dashboard Profile + Vault only | **Done** |
+| Playwright smoke + CI | **Done** — `pnpm test:e2e` |
+| Staging manual gate | **Pending** — install → login → vault → enforcement on staging |
 
-### Phase 3 — not started (UI stubs only)
+### Phase 3 — not started
 
 | Item | Status |
 |------|--------|
 | Analytics | **Not started** |
-| Buddies | **Dashboard tab stub** |
-| Bonuses | **Not started** |
+| Buddies | **Removed from dashboard nav** (Phase 3) |
+| Bonuses | **Partial** — `/bonuses` Today's picks + API proxy; Dashboard tab + full list in Phase 3 |
 
-### Phase 4 — stubs ahead of schedule
+### Phase 4 — stubs, deferred
 
 | Item | Status |
 |------|--------|
-| Web `/tools/*` pages | **2 stub pages** (scan-scams, domain-verifier) — defer per plan |
+| Web `/tools/*` pages | **Stub** — noindex, not in primary nav |
 | API `/tools/*` | **Stub responses** |
 
-### Phase 5 — scaffold only
+### Phase 5 — partial
 
 | Item | Status |
 |------|--------|
-| `apps/discord` | **Scaffold** — `/vault` returns stub text |
+| `apps/discord` | **Partial** — `/vault status` calls API when env set |
 | DNS / redirects | **Documented** in [cutover-checklist.md](./cutover-checklist.md) |
-| Archive monorepo | **Not done** |
+| [v1-ops.md](./v1-ops.md) | **Done** — crawler + archive steps |
+| Archive monorepo | **Manual** — after cutover |
 
 ---
 

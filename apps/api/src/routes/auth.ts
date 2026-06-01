@@ -107,29 +107,35 @@ authRoutes.get('/discord/callback', async (c) => {
     maxAge: 60 * 60 * 24 * 7,
   });
   if (entry.source === 'ext') {
+    const safeToken = JSON.stringify(token);
+    const safeUser = JSON.stringify(user.username);
     return c.html(`<!DOCTYPE html><html><body><script>
       try {
         if (window.opener) {
-          window.opener.postMessage({ type: 'discord-auth-success' }, '*');
+          window.opener.postMessage({
+            type: 'discord-auth-success',
+            token: ${safeToken},
+            username: ${safeUser}
+          }, '*');
         }
       } catch (e) {}
       window.close();
     </script><p>Connected. You can close this window.</p></body></html>`);
   }
-  const dest = entry.redirect?.startsWith('http')
-    ? entry.redirect
-    : entry.redirect?.startsWith('/')
-      ? `${webUrl()}${entry.redirect}`
-      : `${webUrl()}/dashboard`;
+  const redirectPath = entry.redirect?.startsWith('/') ? entry.redirect : '/dashboard';
   const handoff = new URL('/api/auth/complete', webUrl());
   handoff.searchParams.set('token', token);
-  handoff.searchParams.set('redirect', dest);
+  handoff.searchParams.set('redirect', redirectPath);
   return c.redirect(handoff.toString());
 });
 
 authRoutes.get('/me', async (c) => {
+  const bearer = c.req.header('authorization');
   const cookies = parseCookies(c.req.header('cookie'));
-  const token = cookies[sessionCookieName()] ?? getCookie(c, sessionCookieName());
+  const token =
+    (bearer?.startsWith('Bearer ') ? bearer.slice(7) : undefined) ??
+    cookies[sessionCookieName()] ??
+    getCookie(c, sessionCookieName());
   if (!token) {
     return c.json({ user: null }, 401);
   }
@@ -146,9 +152,13 @@ authRoutes.post('/logout', (c) => {
   return c.json({ ok: true });
 });
 
-export async function getAuthUserFromRequest(cookieHeader: string | undefined) {
+export async function getAuthUserFromRequest(
+  cookieHeader: string | undefined,
+  authorization?: string,
+) {
+  const bearer = authorization?.startsWith('Bearer ') ? authorization.slice(7) : undefined;
   const cookies = parseCookies(cookieHeader);
-  const token = cookies[sessionCookieName()];
+  const token = bearer ?? cookies[sessionCookieName()];
   if (!token) return null;
   const session = await verifySession(token);
   if (!session) return null;

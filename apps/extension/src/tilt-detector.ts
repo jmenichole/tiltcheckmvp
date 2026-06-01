@@ -20,21 +20,25 @@ export class TiltDetector {
     if (this.bets.length > 50) this.bets.shift();
   }
 
+  detectFastClicks(): TiltIndicator | null {
+    if (this.clicks.length < 12) return null;
+    return {
+      type: 'fast_clicks',
+      severity: this.clicks.length >= 18 ? 'critical' : 'high',
+      confidence: 0.8,
+      description: 'Rapid clicking detected — take a break.',
+    };
+  }
+
   analyze(): TiltIndicator[] {
     const indicators: TiltIndicator[] = [];
-    if (this.clicks.length >= 12) {
-      indicators.push({
-        type: 'fast_clicks',
-        severity: 'medium',
-        confidence: 0.7,
-        description: 'Rapid clicking detected in the last 5 seconds.',
-      });
-    }
+    const fast = this.detectFastClicks();
+    if (fast) indicators.push(fast);
     const recentLosses = this.bets.filter((b) => b.result === 'loss').length;
     if (recentLosses >= 4) {
       indicators.push({
         type: 'chasing_losses',
-        severity: 'high',
+        severity: recentLosses >= 6 ? 'critical' : 'high',
         confidence: 0.75,
         description: 'Multiple losses in a short window.',
       });

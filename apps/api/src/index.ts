@@ -6,6 +6,7 @@ import { userRoutes } from './routes/user.js';
 import { vaultRoutes } from './routes/vault.js';
 import { trustRoutes } from './routes/trust.js';
 import { toolsRoutes } from './routes/tools.js';
+import { bonusesRoutes } from './routes/bonuses.js';
 
 const app = new Hono();
 
@@ -26,6 +27,7 @@ app.route('/user', userRoutes);
 app.route('/vault', vaultRoutes);
 app.route('/rgaas', trustRoutes);
 app.route('/tools', toolsRoutes);
+app.route('/bonuses', bonusesRoutes);
 
 const port = Number(process.env.PORT ?? 3001);
 console.log(`TiltCheck API listening on http://localhost:${port}`);

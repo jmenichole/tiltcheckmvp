@@ -279,6 +279,14 @@ export interface PublicTrustSupportModule {
   ctaLabel: string;
 }
 
+/** Phase 4 tools hidden from casino surfaces unless NEXT_PUBLIC_SHOW_TOOLS_NAV=true */
+export function getPublicTrustSupportModules(): PublicTrustSupportModule[] {
+  const showTools =
+    typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SHOW_TOOLS_NAV === 'true';
+  if (showTools) return PUBLIC_TRUST_SUPPORT_MODULES;
+  return PUBLIC_TRUST_SUPPORT_MODULES.filter((m) => !m.href.startsWith('/tools'));
+}
+
 export const PUBLIC_TRUST_SUPPORT_MODULES: PublicTrustSupportModule[] = [
   {
     key: 'verification',

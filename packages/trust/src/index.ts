@@ -1,1 +1,1 @@
-export * from './casino-trust';
+export * from './casino-trust.js';

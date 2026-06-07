@@ -1,6 +1,7 @@
 /* © 2024–2026 TiltCheck Ecosystem. All Rights Reserved. Last Updated: 2026-06-03 */
 'use client';
 
+import Link from 'next/link';
 import React from 'react';
 import type { CasinoSiteId } from '@/lib/casino-install-setup';
 import {
@@ -55,6 +56,13 @@ export default function CasinoSetupClient({ siteId }: Props) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-8 pb-16">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-2 text-[10px] font-mono font-black uppercase tracking-[0.16em] text-gray-500 hover:text-[#17c3b2] transition mb-6"
+      >
+        ← Back to home
+      </Link>
+
       <header className="mb-8">
         <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-[#17c3b2] mb-2">
           {preset.eyebrow}
@@ -224,6 +232,13 @@ export default function CasinoSetupClient({ siteId }: Props) {
           </button>
         </div>
       </section>
+
+      <Link
+        href="/"
+        className="block w-full text-center rounded-xl border border-[#283347] px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 transition-all hover:border-[#17c3b2]/30 hover:text-white mb-8"
+      >
+        Back to home
+      </Link>
 
       <footer className="text-center text-[10px] font-mono uppercase tracking-[0.14em] text-gray-500">
         Made for Degens. By Degens.

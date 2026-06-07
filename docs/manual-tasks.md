@@ -31,22 +31,22 @@ Code in this repo is largely ready. These tasks are **your** steps for Supabase,
 
 ## C. Railway — API service (staging)
 
-- [ ] New service from GitHub repo; use [`apps/api/railway.toml`](../apps/api/railway.toml) or commands in [deploy.md](./deploy.md)
-- [ ] Set environment variables:
+- [x] New service from GitHub repo; use [`apps/api/railway.toml`](../apps/api/railway.toml) or commands in [deploy.md](./deploy.md)
+- [ ] Set environment variables (confirm `WEB_URL` matches live web hostname):
 
-  | Variable | Example (staging) |
-  |----------|-------------------|
-  | `WEB_URL` | `https://staging.tiltcheck.me` (or `*.up.railway.app` until DNS) |
-  | `API_URL` | `https://api-staging.tiltcheck.me` |
-  | `SESSION_SECRET` | 32+ random characters |
-  | `DISCORD_CLIENT_ID` | From Discord app |
-  | `DISCORD_CLIENT_SECRET` | From Discord app |
-  | `DISCORD_REDIRECT_URI_WEB` | `https://api-staging.tiltcheck.me/auth/discord/callback` |
-  | `SUPABASE_URL` | Staging project |
-  | `SUPABASE_SERVICE_ROLE_KEY` | Staging service role |
+  | Variable | Example (staging) | Current (Railway) |
+  |----------|-------------------|-------------------|
+  | `WEB_URL` | `https://staging.tiltcheck.me` (or `*.up.railway.app` until DNS) | _Set to your web service URL in Railway_ |
+  | `API_URL` | `https://api-staging.tiltcheck.me` | `https://tiltcheck-api-production.up.railway.app` |
+  | `SESSION_SECRET` | 32+ random characters | _Verify set in Railway_ |
+  | `DISCORD_CLIENT_ID` | From Discord app | _Verify set in Railway_ |
+  | `DISCORD_CLIENT_SECRET` | From Discord app | _Verify set in Railway_ |
+  | `DISCORD_REDIRECT_URI_WEB` | `https://api-staging.tiltcheck.me/auth/discord/callback` | `https://tiltcheck-api-production.up.railway.app/auth/discord/callback` |
+  | `SUPABASE_URL` | Staging project | _Configured — casino-scores returns `source: supabase`_ |
+  | `SUPABASE_SERVICE_ROLE_KEY` | Staging service role | _Configured — casino-scores returns `source: supabase`_ |
 
-- [ ] Deploy; confirm `GET https://<api-host>/health` returns OK
-- [ ] Confirm `GET https://<api-host>/rgaas/casino-scores` returns casinos
+- [x] Deploy; confirm `GET https://<api-host>/health` returns OK — **verified 2026-06-07**
+- [x] Confirm `GET https://<api-host>/rgaas/casino-scores` returns casinos — **verified** (`source: supabase`, 100+ rows)
 
 ---
 
@@ -98,11 +98,29 @@ Code in this repo is largely ready. These tasks are **your** steps for Supabase,
 
 ## H. Phase 2 — extension staging build
 
-- [ ] Build extension pointing at staging API:
-  ```bash
+**Staging API (verified 2026-06-07):** `https://tiltcheck-api-production.up.railway.app`  
+**Design spec:** [2026-06-07-phase-2-protected-session-design.md](./superpowers/specs/2026-06-07-phase-2-protected-session-design.md)
+
+**Vault API smoke (no auth — automated):**
+
+| Check | Result |
+|-------|--------|
+| `GET …/health` | 200 OK |
+| `GET …/rgaas/casino-scores` | 200, `source: supabase` |
+| `GET …/vault` | 401 Unauthorized (expected) |
+| `POST …/vault` | 401 Unauthorized (expected) |
+| `GET …/auth/discord/login` | 302 → Discord (OAuth configured) |
+
+**Vault authenticated test:** Discord login required — see spec §9.3 (dashboard save + Supabase row + extension sync).
+
+- [ ] Build extension pointing at staging API (PowerShell):
+  ```powershell
+  $env:EXTENSION_API_URL = "https://tiltcheck-api-production.up.railway.app"
+  $env:EXTENSION_WEB_URL = "https://tiltcheckmvp-production.up.railway.app"
   cd apps/extension
-  EXTENSION_API_URL=https://api-staging.tiltcheck.me pnpm build
+  node build.js
   ```
+  If `pnpm build` fails with `EPERM` on `~\node_modules\bufferutil`, use `node build.js` — same script, no pnpm wrapper. (`pnpm` may try to self-install `9.15.0` and hit a locked global module.)
 - [ ] Load unpacked `apps/extension/dist` in Chrome (Developer mode)
 - [ ] Log in via extension Discord flow; confirm token in storage (`tc_demo: false`)
 - [ ] On web dashboard: set **session cap** (Vault tab) — confirm `POST /vault` persists (refresh page, rule still there)
@@ -110,6 +128,8 @@ Code in this repo is largely ready. These tasks are **your** steps for Supabase,
 ---
 
 ## I. Phase 2 — enforcement gate (required before prod DNS)
+
+**Status:** API + vault routes live; auth-gated CRUD verified unauthenticated; **G3–G6 pending manual sign-off** (login → vault save → enforcement).
 
 - [ ] Open a test casino site in Chrome with extension enabled
 - [ ] Trigger **critical** tilt (fast-click pattern per extension logic)
@@ -171,5 +191,14 @@ Order: [phases.md](./phases.md).
 |------|--------|
 | Deploy env matrix | [deploy.md](./deploy.md) |
 | Ship gates | [phases.md](./phases.md) |
+| Phase 2 design spec | [superpowers/specs/2026-06-07-phase-2-protected-session-design.md](./superpowers/specs/2026-06-07-phase-2-protected-session-design.md) |
 | Enforcement definition | [cutover-checklist.md](./cutover-checklist.md) |
 | Stack choices | [tech-stack.md](./tech-stack.md) |
+
+### Staging Railway URLs (2026-06-07)
+
+| Service | URL | Status |
+|---------|-----|--------|
+| API | `https://tiltcheck-api-production.up.railway.app` | Deployed; health + casino-scores + vault auth gate OK |
+| Web | `https://tiltcheckmvp-production.up.railway.app` | Login + dashboard verified |
+| Custom DNS | `staging.tiltcheck.me`, `api-staging.tiltcheck.me` | Optional; not required for Phase 2 gate |

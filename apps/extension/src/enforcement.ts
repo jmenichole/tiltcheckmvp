@@ -32,13 +32,22 @@ export function triggerTouchGrassTimeout(reason: string, durationMs: number): vo
   const root = document.createElement('div');
   root.id = LOCKDOWN_ROOT_ID;
   root.style.cssText =
-    'position:fixed;inset:0;z-index:2147483647;background:#0f1115;color:#ff4a4a;display:flex;flex-direction:column;align-items:center;justify-content:center;font:14px ui-monospace,monospace;padding:1.5rem;text-align:center;user-select:none';
+    'position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;user-select:none;background:radial-gradient(ellipse 80% 60% at 50% 40%,rgba(23,195,178,.08),transparent 70%),#0a0c10;color:#fff;font:15px/1.5 system-ui,-apple-system,sans-serif;animation:tiltcheck-lockdown-in .45s ease-out';
   root.innerHTML = `
-    <p style="letter-spacing:.2em;font-size:11px;font-weight:800">TOUCH GRASS</p>
-    <h2 style="font-size:1.25rem;margin:1rem 0">Session cap enforced</h2>
-    <p style="max-width:24rem;color:#ccc;line-height:1.5">${reason}</p>
-    <p id="${TIMER_ID}" style="font-size:2rem;margin-top:1.5rem">--:--</p>
-    <p style="font-size:11px;color:#888;margin-top:1rem">This tab stays locked until the timer hits zero.</p>
+    <style>
+      @keyframes tiltcheck-lockdown-in{from{opacity:0;transform:scale(1.015)}to{opacity:1;transform:scale(1)}}
+      @keyframes tiltcheck-timer-pulse{0%,100%{opacity:1}50%{opacity:.82}}
+    </style>
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#17c3b2,transparent)"></div>
+    <p style="margin:0 0 1.25rem;letter-spacing:.28em;font:700 10px/1 ui-monospace,monospace;color:#17c3b2;text-transform:uppercase">TiltCheck · Degen Protector</p>
+    <h1 style="margin:0;font:900 clamp(2.5rem,10vw,4.5rem)/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 40px rgba(23,195,178,.35),0 0 80px rgba(23,195,178,.12)">Touch Grass</h1>
+    <p style="margin:.75rem 0 0;font-size:1.05rem;font-weight:600;color:#e6e6e6">We locked the table before the tilt hit.</p>
+    <div style="margin:1.5rem 0 0;max-width:26rem;padding:1rem 1.25rem;border:1px solid rgba(23,195,178,.22);border-radius:8px;background:rgba(255,255,255,.03);color:#d1d5db;line-height:1.6;text-align:left">
+      <span style="display:block;margin-bottom:.35rem;font:700 10px/1 ui-monospace,monospace;letter-spacing:.15em;color:#ff4a4a;text-transform:uppercase">Why you're here</span>
+      ${reason}
+    </div>
+    <p id="${TIMER_ID}" style="margin:1.75rem 0 0;font:700 clamp(3rem,12vw,5rem)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#17c3b2;animation:tiltcheck-timer-pulse 2.5s ease-in-out infinite">--:--</p>
+    <p style="margin:1rem 0 0;max-width:22rem;font-size:12px;color:#6b7280;line-height:1.5">Timer hits zero → you're back. For now, step away and touch grass.</p>
   `;
   document.documentElement.appendChild(root);
 

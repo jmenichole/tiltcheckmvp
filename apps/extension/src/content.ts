@@ -22,20 +22,38 @@ if (!excluded) {
     loadSidebarState().then((state) => renderSidebar(host, state));
   }
 
+  function applyStoredState(stored: Record<string, unknown>) {
+    vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
+    enforcementEnabled =
+      Boolean(stored.tc_session_token) &&
+      stored.tc_demo === false &&
+      vaultRules.some((r) => r.ruleType === 'session_cap');
+  }
+
   refreshSidebar();
 
   chrome.storage.onChanged.addListener((changes) => {
-    if (changes.tc_vault_rules || changes.tc_session_token) {
-      chrome.storage.local.get(['tc_vault_rules', 'tc_session_token', 'tc_demo'], (stored) => {
-        vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
-        enforcementEnabled = Boolean(stored.tc_session_token) && stored.tc_demo === false;
-      });
+    if (
+      changes.tc_vault_rules ||
+      changes.tc_session_token ||
+      changes.tc_demo ||
+      changes.tc_username
+    ) {
+      chrome.storage.local.get(
+        ['tc_vault_rules', 'tc_session_token', 'tc_demo', 'tc_username'],
+        (stored) => {
+          applyStoredState(stored);
+          refreshSidebar();
+        },
+      );
     }
   });
 
   chrome.storage.local.get(['tc_vault_rules', 'tc_session_token', 'tc_demo'], (stored) => {
-    vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
-    enforcementEnabled = Boolean(stored.tc_session_token) && stored.tc_demo === false;
+    applyStoredState(stored);
+    if (stored.tc_session_token) {
+      chrome.runtime.sendMessage({ type: 'sync-vault' }).catch(() => {});
+    }
   });
 
   function maybeEnforce(indicators: ReturnType<TiltDetector['analyze']>) {

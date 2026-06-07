@@ -1,4 +1,4 @@
-import { apiBaseUrl } from './config.js';
+import { apiBaseUrl, webBaseUrl } from './config.js';
 
 export type SidebarState = {
   loggedIn: boolean;
@@ -7,10 +7,11 @@ export type SidebarState = {
 };
 
 export async function loadSidebarState(): Promise<SidebarState> {
-  const stored = await chrome.storage.local.get(['tc_demo', 'tc_username']);
+  const stored = await chrome.storage.local.get(['tc_demo', 'tc_username', 'tc_session_token']);
+  const loggedIn = Boolean(stored.tc_session_token);
   return {
-    loggedIn: Boolean(stored.tc_username),
-    demoMode: stored.tc_demo !== false,
+    loggedIn,
+    demoMode: !loggedIn || stored.tc_demo !== false,
     username: stored.tc_username,
   };
 }
@@ -29,7 +30,6 @@ export function renderSidebar(root: HTMLElement, state: SidebarState) {
     window.open(url, '_blank', 'width=520,height=720');
   });
   panel.querySelector('#tc-vault')?.addEventListener('click', () => {
-    const web = (typeof process !== 'undefined' && process.env?.EXTENSION_WEB_URL) || 'http://localhost:3000';
-    window.open(`${web}/dashboard`, '_blank');
+    window.open(`${webBaseUrl()}/dashboard`, '_blank');
   });
 }

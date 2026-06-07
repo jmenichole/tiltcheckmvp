@@ -132,8 +132,15 @@ Definition: [cutover-checklist.md](./cutover-checklist.md)
 
 ## J. Phase 2 fast-follow quick wins (in repo / deploying)
 
-- [ ] `/touch-grass` page live on staging
-- [ ] `GET /rgaas/casino-lookup?q=stake` returns casino object
+- [x] `/touch-grass` page — ported
+- [x] `GET /rgaas/casino-lookup?q=stake` — API route added
+- [x] `/stake` and `/nuts` mobile AutoVault install pages — ported (minimal chrome, userscript on `/userscripts/…`)
+- [x] Domain verifier — heuristic SusLink-style scan + scam blacklist (`POST /tools/domain-verifier`, `GET /rgaas/domain-check`)
+- [ ] Confirm on staging after deploy:
+  - `https://tiltcheckmvp-production.up.railway.app/touch-grass`
+  - `https://tiltcheckmvp-production.up.railway.app/stake`
+  - `https://tiltcheckmvp-production.up.railway.app/nuts`
+  - `https://tiltcheck-api-production.up.railway.app/rgaas/domain-check?domain=stake-bonus-promo.xyz`
 - [ ] Rebuild + reload extension after API deploy
 
 ---

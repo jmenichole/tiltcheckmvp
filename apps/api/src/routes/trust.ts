@@ -1,6 +1,8 @@
 import { Hono } from 'hono';
 import { getCasinoScores } from '@tiltcheck/db';
 import { CASINOS, casinoMatchesQuery, findLiveTrustScore } from '@tiltcheck/trust';
+import { loadDomainBlacklist } from '../lib/domain-blacklist.js';
+import { scanDomain } from '../lib/domain-scan.js';
 
 export const trustRoutes = new Hono();
 
@@ -42,6 +44,27 @@ trustRoutes.get('/casino-scores', async (c) => {
 trustRoutes.get('/casino-scores/merge-check', (c) => {
   const sample = CASINOS[0];
   return c.json({ sample: sample ? findLiveTrustScore(sample, []) : null });
+});
+
+trustRoutes.get('/domain-check', async (c) => {
+  const rawDomain = c.req.query('domain')?.trim() ?? '';
+  if (!rawDomain) {
+    return c.json({ error: 'domain query param is required', code: 'INVALID_DOMAIN' }, 400);
+  }
+
+  const blacklist = await loadDomainBlacklist();
+  const result = scanDomain(rawDomain, blacklist);
+  const safe = result.riskLevel === 'safe';
+
+  return c.json({
+    success: true,
+    domain: rawDomain,
+    safe,
+    riskLevel: result.riskLevel,
+    message: result.reason,
+    result,
+    source: 'heuristic',
+  });
 });
 
 trustRoutes.get('/casino-lookup', async (c) => {

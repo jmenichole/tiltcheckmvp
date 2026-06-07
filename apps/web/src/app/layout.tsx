@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import SiteFooter from '@/components/SiteFooter';
-import SiteNav from '@/components/SiteNav';
+import AppShell from '@/components/AppShell';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -12,9 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="degen-background">
-        <SiteNav />
-        {children}
-        <SiteFooter />
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

@@ -149,9 +149,11 @@ Work top to bottom; do not start a lower block until the block above is done or 
 
 1. **P2** — Staging manual gate: extension build → Discord login → vault save → enforcement fires
 2. **P2** — Run `pnpm test:e2e` green on `main`
-3. **P2 fast-follow** — Port `/touch-grass` page (enforcement landing; no dead URL after lockout)
-4. **P2 fast-follow** — `GET /rgaas/casino-lookup?q=` — extension sidebar domain → trust score
-5. **P2 fast-follow** — `GET /rgaas/profile/:userId` — server-side tilt history for vault enrichment (optional for gate)
+3. **P2 fast-follow** — Port `/touch-grass` page — **done**
+4. **P2 fast-follow** — `GET /rgaas/casino-lookup?q=` — **done**
+5. **P2 fast-follow** — `GET /rgaas/domain-check` + wire domain-verifier UI — **done**
+6. **P3** — Port `/stake` and `/nuts` AutoVault install pages — **done** (verify on staging)
+7. **P2 fast-follow** — `GET /rgaas/profile/:userId` — server-side tilt history for vault enrichment (optional for gate)
 
 ### Phase 2 — done in repo (pending staging sign-off)
 
@@ -163,9 +165,7 @@ Work top to bottom; do not start a lower block until the block above is done or 
 6. **P3** — Analytics tab + session summary API
 7. **P3** — Buddies (simplified accountability)
 8. **P3** — Bonuses dashboard tab + full inbox list
-9. **P3** — Port `/stake` and `/nuts` AutoVault mobile install pages (high DM-share traffic)
-10. **P3** — Wire `/tools/domain-verifier` to real SusLink scan
-11. **P3** — Wire `/tools/scan-scams` to scam blacklist data
+9. **P3** — Wire `/tools/scan-scams` to richer scam intel (blacklist wired; expand sources)
 12. **P3** — `GET /rgaas/license-check` endpoint
 13. **P3** — `GET /stats` KPI strip → homepage hero
 14. **P3** — CollectClock bonus timers under `/bonuses`

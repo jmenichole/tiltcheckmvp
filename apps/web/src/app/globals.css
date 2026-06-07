@@ -1184,6 +1184,17 @@ body.degen-background > * {
   text-align: center;
 }
 
+.landing-hero-kicker {
+  max-width: 22ch;
+  margin: 1.1rem auto 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.55rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  color: #f6fbff;
+  text-wrap: balance;
+}
+
 .landing-hero-subtitle--centered {
   max-width: 38rem;
   text-align: center;
@@ -1192,6 +1203,12 @@ body.degen-background > * {
   line-height: 1.72;
   color: #b5c1cd;
   letter-spacing: -0.012em;
+}
+
+.landing-hero-subtitle--lede {
+  max-width: 34rem;
+  color: #d0dae6;
+  font-weight: 500;
 }
 
 .hero-content {

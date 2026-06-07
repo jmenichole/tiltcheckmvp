@@ -28,10 +28,15 @@ export default function Home() {
         <div className="landing-shell landing-hero-centered">
           <span className="brand-eyebrow">Built for Degens. By Degens.</span>
           <h1 className="landing-hero-title landing-hero-title--centered">HOUSE ALWAYS WINS? FUCK THAT.</h1>
+          <p className="landing-hero-kicker">The math isn&apos;t rigged. Your dopamine is.</p>
           <p className="landing-hero-subtitle landing-hero-subtitle--centered">
-            TiltCheck is a read-only browser extension that stops you from giving your wins back to the
-            machine. We watch your pacing, click-speed, and tilt signals in real time—and pull you out
-            before you rug yourself.
+            Casinos don&apos;t need to cheat the RNG when the UI is engineered to weaponize your
+            psychology—breathless loops, fast pacing, flash wins. They push you into tilt until you
+            voluntarily hand back every token.
+          </p>
+          <p className="landing-hero-subtitle landing-hero-subtitle--centered landing-hero-subtitle--lede">
+            TiltCheck is the read-only friction layer that tracks your session drift in real time.
+            Kill the auto-pilot. Get pulled out before you rug your own bankroll.
           </p>
           <div className="hero-actions">
             <Link href="/extension" className="btn btn-primary">

@@ -145,21 +145,54 @@ flowchart TB
 
 Work top to bottom; do not start a lower block until the block above is done or explicitly deferred.
 
-1. **P1** — Polish casino slug SEO/copy; wire `casino-scores` to v1 migration data; production deploy web + API read paths
-2. **P1** — Verify all legal routes and extension CTAs match live marketing
-3. **P2** — Wire vault POST/PATCH/DELETE to Supabase (remove API stubs)
-4. **P2** — Extension: session cookie sync, vault fetch, enforcement on `critical` tilt
-5. **P2** — Dashboard: Profile + Vault UX complete; drop or hide non-MVP tabs
-6. **P2** — Staging E2E script (install → login → vault → test casino)
-7. **P5** — Staging sign-off → production DNS
-8. **P3** — Analytics tab + API
-9. **P3** — Buddies (simplified)
-10. **P3** — Bonuses (simplified)
-11. **P4** — session-stats
-12. **P4** — verify
-13. **P4** — house-edge
-14. **P5** — Discord `/vault` + webhook
-15. **P5** — `dashboard.tiltcheck.me` redirect; archive old monorepo
+### Phase 2 — staging gate (must pass before DNS)
+
+1. **P2** — Staging manual gate: extension build → Discord login → vault save → enforcement fires
+2. **P2** — Run `pnpm test:e2e` green on `main`
+3. **P2 fast-follow** — Port `/touch-grass` page (enforcement landing; no dead URL after lockout)
+4. **P2 fast-follow** — `GET /rgaas/casino-lookup?q=` — extension sidebar domain → trust score
+5. **P2 fast-follow** — `GET /rgaas/profile/:userId` — server-side tilt history for vault enrichment (optional for gate)
+
+### Phase 2 — done in repo (pending staging sign-off)
+
+- Discord OAuth + sessions, vault CRUD, dashboard Profile + Vault, extension enforcement + vault sync
+- Web UI polish, footer, Phase 2 spec — see [manual-tasks.md](./manual-tasks.md)
+
+### Phase 3 — post-cutover fast-follow
+
+6. **P3** — Analytics tab + session summary API
+7. **P3** — Buddies (simplified accountability)
+8. **P3** — Bonuses dashboard tab + full inbox list
+9. **P3** — Port `/stake` and `/nuts` AutoVault mobile install pages (high DM-share traffic)
+10. **P3** — Wire `/tools/domain-verifier` to real SusLink scan
+11. **P3** — Wire `/tools/scan-scams` to scam blacklist data
+12. **P3** — `GET /rgaas/license-check` endpoint
+13. **P3** — `GET /stats` KPI strip → homepage hero
+14. **P3** — CollectClock bonus timers under `/bonuses`
+15. **P3** — `POST /rgaas/breathalyzer/evaluate` + `POST /rgaas/anti-tilt/evaluate`
+16. **P3** — `POST /newsletter` + form on web
+17. **P3** — Port `/microgrant` page (form disabled until funded)
+
+### Phase 4 — tools depth
+
+18. **P4** — session-stats (drift monitor)
+19. **P4** — verify (manual bet HMAC re-calculator — not domain scanner)
+20. **P4** — house-edge scanner (client-side calculator)
+21. **P4** — `/intel/rtp` RTP database page
+22. **P4** — `POST /rgaas/rtp/report` + `GET /rgaas/rtp/discrepancy/:platform`
+23. **P4** — `GET /rgaas/shadow-bans`, scam-domains depth, telemetry
+
+### Phase 5 — cutover + B2B
+
+24. **P5** — Staging sign-off → production DNS (`tiltcheck.me`, `api.tiltcheck.me`)
+25. **P5** — Discord bot `/vault status` + webhook
+26. **P5** — `dashboard.tiltcheck.me` → 301 `/dashboard`; archive v1 monorepo
+27. **P5** — Operators pages (`/operators`, pricing, API keys)
+28. **P5** — Stripe billing, partner API, `POST /rgaas/email-ingest`
+
+### Defer / archive (low solo-degen PMF)
+
+- `/blog`, `/docs`, `/ask` (AI chat), `/collab`, `/beta-tester`, Degens Arena page (link external), JustTheTip, WebSocket `/analyzer`, OIDC Magic TEE
 
 ---
 

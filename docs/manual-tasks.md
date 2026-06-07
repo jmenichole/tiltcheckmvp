@@ -2,186 +2,174 @@
 
 Code in this repo is largely ready. These tasks are **your** steps for Supabase, Railway, Discord, DNS, and sign-off. Work top to bottom; do not cut over production DNS until **Phase 2 staging** is checked off.
 
+**Backlog order:** [phases.md](./phases.md) → Single backlog queue
+
 ---
 
 ## A. Accounts and access
 
-- [ ] GitHub: v2 repo pushed and connected to Railway (two services: web + api)
-- [ ] Supabase: create **staging** project (and **production** when ready)
-- [ ] Discord Developer Portal: app for OAuth (`DISCORD_CLIENT_ID` / `SECRET`)
-- [ ] Railway: billing OK; custom domains available for staging/prod
-- [ ] Chrome Web Store: access to publish extension update (when Phase 2 is ready)
+- [x] GitHub: v2 repo pushed and connected to Railway (two services: web + api)
+- [x] Supabase: **staging** project live (`tnoyhfbxsykjdbyjwthu`)
+- [x] Discord Developer Portal: OAuth app configured
+- [x] Railway: web + api services deployed
+- [ ] Chrome Web Store: publish extension update (when Phase 2 gate passes)
 
 ---
 
-## B. Supabase (staging first)
+## B. Supabase (staging)
 
-- [ ] Open SQL editor (or Supabase CLI) for staging project
-- [ ] Run migration: [`supabase/migrations/20260527000000_initial.sql`](../supabase/migrations/20260527000000_initial.sql)
-- [ ] Copy **Project URL** → `SUPABASE_URL`
-- [ ] Copy **service role** key → `SUPABASE_SERVICE_ROLE_KEY` (API only; never in web or git)
-- [ ] From repo root with `.env` filled:
-  ```bash
-  pnpm seed:casino-scores
-  ```
-- [ ] Confirm rows in `casino_scores` (or verify API returns `source` other than static-only)
-- [ ] Repeat migration + seed for **production** Supabase when you are ready for prod (can wait until after staging sign-off)
+- [x] Migration applied — [`supabase/migrations/20260527000000_initial.sql`](../supabase/migrations/20260527000000_initial.sql)
+- [x] `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` on Railway API
+- [x] Casino scores seeded — `GET /rgaas/casino-scores` returns `source: supabase` (116 rows)
+- [ ] Repeat migration + seed for **production** Supabase before DNS cutover
 
 ---
 
-## C. Railway — API service (staging)
+## C. Railway — API (staging)
 
-- [x] New service from GitHub repo; use [`apps/api/railway.toml`](../apps/api/railway.toml) or commands in [deploy.md](./deploy.md)
-- [ ] Set environment variables (confirm `WEB_URL` matches live web hostname):
+**URL:** `https://tiltcheck-api-production.up.railway.app`
 
-  | Variable | Example (staging) | Current (Railway) |
-  |----------|-------------------|-------------------|
-  | `WEB_URL` | `https://staging.tiltcheck.me` (or `*.up.railway.app` until DNS) | _Set to your web service URL in Railway_ |
-  | `API_URL` | `https://api-staging.tiltcheck.me` | `https://tiltcheck-api-production.up.railway.app` |
-  | `SESSION_SECRET` | 32+ random characters | _Verify set in Railway_ |
-  | `DISCORD_CLIENT_ID` | From Discord app | _Verify set in Railway_ |
-  | `DISCORD_CLIENT_SECRET` | From Discord app | _Verify set in Railway_ |
-  | `DISCORD_REDIRECT_URI_WEB` | `https://api-staging.tiltcheck.me/auth/discord/callback` | `https://tiltcheck-api-production.up.railway.app/auth/discord/callback` |
-  | `SUPABASE_URL` | Staging project | _Configured — casino-scores returns `source: supabase`_ |
-  | `SUPABASE_SERVICE_ROLE_KEY` | Staging service role | _Configured — casino-scores returns `source: supabase`_ |
+- [x] Service deployed from [`apps/api/railway.toml`](../apps/api/railway.toml)
+- [x] `GET /health` → 200
+- [x] `GET /rgaas/casino-scores` → supabase
+- [x] `GET /vault` / `POST /vault` → 401 without session (auth gate OK)
+- [x] `GET /auth/discord/login` → 302 Discord
+- [ ] Confirm env vars current:
 
-- [x] Deploy; confirm `GET https://<api-host>/health` returns OK — **verified 2026-06-07**
-- [x] Confirm `GET https://<api-host>/rgaas/casino-scores` returns casinos — **verified** (`source: supabase`, 100+ rows)
+  | Variable | Staging value |
+  |----------|----------------|
+  | `WEB_URL` | `https://tiltcheckmvp-production.up.railway.app` |
+  | `API_URL` | `https://tiltcheck-api-production.up.railway.app` |
+  | `DISCORD_REDIRECT_URI_WEB` | `https://tiltcheck-api-production.up.railway.app/auth/discord/callback` |
 
 ---
 
-## D. Railway — Web service (staging)
+## D. Railway — Web (staging)
 
-- [ ] Second service from same repo; use [`apps/web/railway.toml`](../apps/web/railway.toml)
-- [ ] Set environment variables:
+**URL:** `https://tiltcheckmvp-production.up.railway.app`
 
-  | Variable | Example (staging) |
-  |----------|-------------------|
-  | `NEXT_PUBLIC_WEB_URL` | Same as `WEB_URL` above |
-  | `NEXT_PUBLIC_API_URL` | Same as `API_URL` above |
-  | `NEXT_PUBLIC_SHOW_TOOLS_NAV` | `false` |
-  | `BONUSES_UPSTREAM_URL` | `https://api.tiltcheck.me/bonuses` (optional; v1 inbox feed) |
-
-- [ ] Deploy; open staging URL — home, `/casinos`, `/extension` load
-- [ ] Optional: `https://<web-host>/bonuses` shows picks (upstream or static fallback)
+- [x] Service deployed from [`apps/web/railway.toml`](../apps/web/railway.toml)
+- [x] Discord login → `/dashboard` works (OAuth redirect fix deployed)
+- [x] Footer + dashboard UI polish deployed
+- [ ] After next deploy: `/touch-grass` loads
+- [ ] `NEXT_PUBLIC_API_URL` matches API URL above
 
 ---
 
 ## E. Discord OAuth
 
-- [ ] Discord app → OAuth2 → Redirects — add:
-  - `https://api-staging.tiltcheck.me/auth/discord/callback`
-  - `https://api.tiltcheck.me/auth/discord/callback` (for prod later)
-- [ ] Scopes: `identify` (and any others your v1 app used)
-- [ ] After deploy, test: `https://<web-host>/login` → Discord → lands on `/dashboard` with session cookie
+- [x] Redirect added: `https://tiltcheck-api-production.up.railway.app/auth/discord/callback`
+- [ ] Add prod redirect before cutover: `https://api.tiltcheck.me/auth/discord/callback`
+- [x] Web login tested — lands on `/dashboard`
+
+### Extension OAuth — do NOT use `localhost:3001` unless API is running locally
+
+| URL | When to use |
+|-----|-------------|
+| `https://tiltcheck-api-production.up.railway.app/auth/discord/login?source=ext` | **Default** — staging extension build |
+| `http://localhost:3001/auth/discord/login?source=ext` | Only if you started local API: `cd apps/api && node …` or `pnpm --filter @tiltcheck/api dev` |
+
+**"Site can't be reached" on localhost:3001** = API not running on your machine. Use the staging URL above, or start the API locally first.
 
 ---
 
-## F. DNS — staging (optional but recommended)
+## F. DNS — staging (optional)
 
-- [ ] `staging.tiltcheck.me` → Railway **web** service
-- [ ] `api-staging.tiltcheck.me` → Railway **api** service
-- [ ] Update Railway env `WEB_URL`, `API_URL`, `NEXT_PUBLIC_*` to match custom hostnames
-- [ ] Redeploy both services after URL changes
+- [ ] `staging.tiltcheck.me` → Railway web
+- [ ] `api-staging.tiltcheck.me` → Railway api
+- [ ] Update `WEB_URL` / `API_URL` / `NEXT_PUBLIC_*` after DNS
 
 ---
 
 ## G. Phase 1 smoke (staging)
 
-- [ ] Home CTAs → `/extension` and `/casinos`
-- [ ] Casino directory + at least one `/casinos/[slug]` page
-- [ ] Extension page links to **existing** Chrome Web Store listing (legacy extension OK for Phase 1)
-- [ ] Legal pages: `/privacy`, `/terms`, `/legal`
-- [ ] Tools not in primary nav
+- [x] Home CTAs → `/extension` and `/casinos`
+- [x] Casino directory + slug pages
+- [x] Legal: `/privacy`, `/terms`, `/legal`
+- [x] Tools not in primary nav
+- [ ] Extension page links to **legacy** Chrome Web Store listing (until v2 CWS update)
 
 ---
 
 ## H. Phase 2 — extension staging build
 
-**Staging API (verified 2026-06-07):** `https://tiltcheck-api-production.up.railway.app`  
 **Design spec:** [2026-06-07-phase-2-protected-session-design.md](./superpowers/specs/2026-06-07-phase-2-protected-session-design.md)
 
-**Vault API smoke (no auth — automated):**
+### Build (PowerShell)
 
-| Check | Result |
-|-------|--------|
-| `GET …/health` | 200 OK |
-| `GET …/rgaas/casino-scores` | 200, `source: supabase` |
-| `GET …/vault` | 401 Unauthorized (expected) |
-| `POST …/vault` | 401 Unauthorized (expected) |
-| `GET …/auth/discord/login` | 302 → Discord (OAuth configured) |
+```powershell
+$env:EXTENSION_API_URL = "https://tiltcheck-api-production.up.railway.app"
+$env:EXTENSION_WEB_URL = "https://tiltcheckmvp-production.up.railway.app"
+cd apps/extension
+node build.js
+```
 
-**Vault authenticated test:** Discord login required — see spec §9.3 (dashboard save + Supabase row + extension sync).
+Use `node build.js` if `pnpm build` hits `EPERM` on `~\node_modules\bufferutil`.
 
-- [ ] Build extension pointing at staging API (PowerShell):
-  ```powershell
-  $env:EXTENSION_API_URL = "https://tiltcheck-api-production.up.railway.app"
-  $env:EXTENSION_WEB_URL = "https://tiltcheckmvp-production.up.railway.app"
-  cd apps/extension
-  node build.js
-  ```
-  If `pnpm build` fails with `EPERM` on `~\node_modules\bufferutil`, use `node build.js` — same script, no pnpm wrapper. (`pnpm` may try to self-install `9.15.0` and hit a locked global module.)
-- [ ] Load unpacked `apps/extension/dist` in Chrome (Developer mode)
-- [ ] Log in via extension Discord flow; confirm token in storage (`tc_demo: false`)
-- [ ] On web dashboard: set **session cap** (Vault tab) — confirm `POST /vault` persists (refresh page, rule still there)
+### Checklist
+
+- [ ] Load unpacked `apps/extension/dist` in Chrome
+- [ ] Extension OAuth: use **staging API URL** (not localhost unless API running locally)
+- [ ] Sidebar → Connect Discord → `tc_session_token` set, `tc_demo: false`
+- [ ] Dashboard → Vault tab → save session cap → **refresh** → rule persists
+- [ ] Extension storage: `tc_vault_rules` includes enabled `session_cap`
 
 ---
 
-## I. Phase 2 — enforcement gate (required before prod DNS)
+## I. Phase 2 — enforcement gate (blocks prod DNS)
 
-**Status:** API + vault routes live; auth-gated CRUD verified unauthenticated; **G3–G6 pending manual sign-off** (login → vault save → enforcement).
+- [ ] Test casino tab + extension active
+- [ ] Rapid-click until **critical** tilt
+- [ ] Touch Grass overlay (teal hero, undismissable timer)
+- [ ] Betting UI blocked until timer ends
+- [ ] Service worker: `[TiltCheck] Enforcement fired`
+- [ ] Optional: visit `/touch-grass` after lockout — page loads
+- [ ] `pnpm test:e2e` green
 
-- [ ] Open a test casino site in Chrome with extension enabled
-- [ ] Trigger **critical** tilt (fast-click pattern per extension logic)
-- [ ] Confirm **Touch Grass** fullscreen overlay appears
-- [ ] Confirm betting UI blocked until timer ends
-- [ ] Service worker console: `[TiltCheck] Enforcement fired`
-- [ ] Run local or CI: `pnpm test:e2e` (green on `main`)
-
-Full definition: [cutover-checklist.md](./cutover-checklist.md) → “Definition: enforcement fires”.
-
----
-
-## J. Production Railway + Supabase
-
-- [ ] Duplicate Railway services or promote staging → **production** env vars
-- [ ] Production Supabase: run migration + `pnpm seed:casino-scores`
-- [ ] Production Discord redirect: `https://api.tiltcheck.me/auth/discord/callback`
-- [ ] Re-run Phase 1 + Phase 2 smoke on production hostnames (or accept staging sign-off if prod is clone)
+Definition: [cutover-checklist.md](./cutover-checklist.md)
 
 ---
 
-## K. Production DNS cutover (only after H + I are green)
+## J. Phase 2 fast-follow quick wins (in repo / deploying)
 
-- [ ] `tiltcheck.me` → Railway **web**
-- [ ] `api.tiltcheck.me` → Railway **api**
-- [ ] `dashboard.tiltcheck.me` → **301** to `https://tiltcheck.me/dashboard`
-- [ ] Publish Chrome Web Store update with `EXTENSION_API_URL=https://api.tiltcheck.me`
-- [ ] Smoke prod: login, vault, one enforcement test on a throwaway session
+- [ ] `/touch-grass` page live on staging
+- [ ] `GET /rgaas/casino-lookup?q=stake` returns casino object
+- [ ] Rebuild + reload extension after API deploy
 
 ---
 
-## L. v1 parallel ops (do not forget)
+## K. Production Railway + Supabase
 
-- [ ] Email crawler on v1 monorepo: `CRAWLER_API_URL=https://api.tiltcheck.me` in `.env`
-- [ ] Run crawler with limit if backlog: `pnpm crawl:emails -- --limit 100` (optional `--digest`)
-- [ ] v2 `/bonuses` uses `BONUSES_UPSTREAM_URL` until v2 ingest exists
-- [ ] After cutover stable: archive `tiltcheck-monorepo` on GitHub (read-only)
-- [ ] Plan v2 `POST /rgaas/email-ingest` before moving crawler off v1
+- [ ] Clone staging env → production Railway services
+- [ ] Production Supabase: migration + seed
+- [ ] Production Discord redirect on `api.tiltcheck.me`
+- [ ] Re-run Phase 1 + Phase 2 smoke on prod hostnames
+
+---
+
+## L. Production DNS cutover (only after H + I green)
+
+- [ ] `tiltcheck.me` → Railway web
+- [ ] `api.tiltcheck.me` → Railway api
+- [ ] `dashboard.tiltcheck.me` → 301 `/dashboard`
+- [ ] Chrome Web Store: `EXTENSION_API_URL=https://api.tiltcheck.me`
+- [ ] Smoke: login → vault → one enforcement
+
+---
+
+## M. v1 parallel ops
+
+- [ ] Crawler on v1: `CRAWLER_API_URL=https://api.tiltcheck.me`
+- [ ] v2 `/bonuses` uses `BONUSES_UPSTREAM_URL` until v2 ingest
+- [ ] Archive `tiltcheck-monorepo` after cutover stable
 
 Details: [v1-ops.md](./v1-ops.md).
 
 ---
 
-## M. Post-cutover (Phase 3+)
+## N. Post-cutover (Phase 3+)
 
-- [ ] Analytics tab + API
-- [ ] Buddies (simplified)
-- [ ] Dashboard bonuses tab (full list; public `/bonuses` already partial)
-- [ ] Tools: session-stats → verify → house-edge
-- [ ] Discord bot on Railway (`DISCORD_BOT_TOKEN`, `TILTCHECK_API_URL`)
-
-Order: [phases.md](./phases.md).
+See [phases.md](./phases.md) backlog items 6–17: Analytics, Buddies, Bonuses tab, `/stake`/`/nuts`, domain-verifier, scan-scams, license-check, stats KPI, CollectClock, breathalyzer API, newsletter, microgrant.
 
 ---
 
@@ -189,16 +177,15 @@ Order: [phases.md](./phases.md).
 
 | What | Where |
 |------|--------|
+| Backlog queue | [phases.md](./phases.md) |
+| Phase 2 spec | [superpowers/specs/2026-06-07-phase-2-protected-session-design.md](./superpowers/specs/2026-06-07-phase-2-protected-session-design.md) |
 | Deploy env matrix | [deploy.md](./deploy.md) |
-| Ship gates | [phases.md](./phases.md) |
-| Phase 2 design spec | [superpowers/specs/2026-06-07-phase-2-protected-session-design.md](./superpowers/specs/2026-06-07-phase-2-protected-session-design.md) |
 | Enforcement definition | [cutover-checklist.md](./cutover-checklist.md) |
-| Stack choices | [tech-stack.md](./tech-stack.md) |
 
-### Staging Railway URLs (2026-06-07)
+### Staging URLs
 
-| Service | URL | Status |
-|---------|-----|--------|
-| API | `https://tiltcheck-api-production.up.railway.app` | Deployed; health + casino-scores + vault auth gate OK |
-| Web | `https://tiltcheckmvp-production.up.railway.app` | Login + dashboard verified |
-| Custom DNS | `staging.tiltcheck.me`, `api-staging.tiltcheck.me` | Optional; not required for Phase 2 gate |
+| Service | URL |
+|---------|-----|
+| API | `https://tiltcheck-api-production.up.railway.app` |
+| Web | `https://tiltcheckmvp-production.up.railway.app` |
+| Ext OAuth (staging) | `https://tiltcheck-api-production.up.railway.app/auth/discord/login?source=ext` |

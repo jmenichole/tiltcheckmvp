@@ -11,6 +11,7 @@ export default function SiteFooter() {
             <Link href="/privacy">Privacy</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/legal">Legal</Link>
+            <Link href="/touch-grass">Touch Grass</Link>
           </div>
           <p className="footer-tagline">Made for degens. By degens &lt;3</p>
           <p className="footer-copyright">© 2024–2026 TiltCheck Ecosystem. All Rights Reserved.</p>

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { getCasinoScores } from '@tiltcheck/db';
-import { CASINOS, findLiveTrustScore } from '@tiltcheck/trust';
+import { CASINOS, casinoMatchesQuery, findLiveTrustScore } from '@tiltcheck/trust';
 
 export const trustRoutes = new Hono();
 
@@ -42,4 +42,30 @@ trustRoutes.get('/casino-scores', async (c) => {
 trustRoutes.get('/casino-scores/merge-check', (c) => {
   const sample = CASINOS[0];
   return c.json({ sample: sample ? findLiveTrustScore(sample, []) : null });
+});
+
+trustRoutes.get('/casino-lookup', async (c) => {
+  const query = c.req.query('q')?.trim() ?? '';
+  if (!query) {
+    return c.json({ error: 'q parameter required' }, 400);
+  }
+
+  const casino = CASINOS.find((entry) => casinoMatchesQuery(entry, query));
+  if (!casino) {
+    return c.json({ casino: null });
+  }
+
+  const live = await getCasinoScores();
+  const liveScore = findLiveTrustScore(casino, live);
+  const score = liveScore?.currentScore ?? casino.score;
+
+  return c.json({
+    casino: {
+      name: casino.name,
+      slug: casino.slug,
+      score,
+      grade: casino.grade,
+      risk: liveScore?.riskLevel ?? casino.risk,
+    },
+  });
 });

@@ -3,7 +3,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web... build"
 
 [deploy]
 startCommand = "pnpm --filter @tiltcheck/web start"

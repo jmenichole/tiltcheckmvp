@@ -4,7 +4,7 @@
 
 [build]
 builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/api build"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/api... build"
 
 [deploy]
 startCommand = "pnpm --filter @tiltcheck/api start"

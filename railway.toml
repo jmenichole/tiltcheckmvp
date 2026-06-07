@@ -1,0 +1,11 @@
+# Default Railway config for the linked WEB service (tiltcheckmvp).
+# API service: set Config file path to /apps/api/railway.toml in Railway dashboard.
+
+[build]
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web build"
+
+[deploy]
+startCommand = "pnpm --filter @tiltcheck/web start"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"

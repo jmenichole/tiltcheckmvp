@@ -2832,8 +2832,12 @@ body.degen-background > * {
 }
 
 .footer-bottom {
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
+  justify-content: flex-start;
   gap: 0.8rem;
+  max-width: none;
   margin-top: 2rem;
   padding-top: 1.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.07);

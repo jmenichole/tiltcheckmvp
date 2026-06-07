@@ -39,13 +39,21 @@ Write-Log "=== Email Crawler Start ==="
 Write-Log "Repo root: $repoRoot"
 
 $envFile = Join-Path $repoRoot ".env"
+$fallbackCandidates = @(
+    (Join-Path $env:USERPROFILE "tiltcheck-monorepo\.env"),
+    (Join-Path (Split-Path $repoRoot -Parent) "tiltcheck-monorepo\.env")
+)
 $loaded = Import-DotEnvFile -Path $envFile
 if (-not $loaded) {
-    $fallbackEnv = Join-Path (Split-Path $repoRoot -Parent) "tiltcheck-monorepo\.env"
-    if (Import-DotEnvFile -Path $fallbackEnv) {
-        Write-Log "Loaded crawler env from tiltcheck-monorepo/.env fallback"
-    } else {
-        Write-Log "WARNING: No .env found in v2 repo or v1 monorepo fallback"
+    foreach ($candidate in $fallbackCandidates) {
+        if (Import-DotEnvFile -Path $candidate) {
+            Write-Log "Loaded crawler env from $candidate"
+            $loaded = $true
+            break
+        }
+    }
+    if (-not $loaded) {
+        Write-Log "WARNING: No .env found in v2 repo or monorepo fallback paths"
     }
 } else {
     Write-Log ".env loaded"

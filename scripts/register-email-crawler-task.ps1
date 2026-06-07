@@ -34,8 +34,20 @@ if (-not (Test-Path $runnerScript)) {
 }
 
 $envFile = Join-Path $repoRoot ".env"
-$fallbackEnv = Join-Path (Split-Path $repoRoot -Parent) "tiltcheck-monorepo\.env"
-if (-not (Test-Path $envFile) -and -not (Test-Path $fallbackEnv)) {
+$fallbackCandidates = @(
+    (Join-Path $env:USERPROFILE "tiltcheck-monorepo\.env"),
+    (Join-Path (Split-Path $repoRoot -Parent) "tiltcheck-monorepo\.env")
+)
+$hasEnv = Test-Path $envFile
+if (-not $hasEnv) {
+    foreach ($candidate in $fallbackCandidates) {
+        if (Test-Path $candidate) {
+            $hasEnv = $true
+            break
+        }
+    }
+}
+if (-not $hasEnv) {
     throw "No .env in v2 repo and no tiltcheck-monorepo/.env fallback. Add CRAWLER_EMAIL / CRAWLER_APP_PASSWORD."
 }
 

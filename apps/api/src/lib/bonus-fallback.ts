@@ -8,6 +8,9 @@ export interface BonusPick {
   expiresSoon: boolean;
   urgent: boolean;
   source: 'static-fallback' | 'email-inbox';
+  code?: string | null;
+  verified?: string;
+  imageUrl?: string | null;
 }
 
 export const STATIC_BONUS_PICKS: BonusPick[] = [
@@ -50,6 +53,7 @@ export interface UpstreamBonusPayload {
   source?: string;
   available?: boolean;
   updatedAt?: string | null;
+  message?: string;
   data?: Array<Record<string, unknown>>;
 }
 

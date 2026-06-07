@@ -20,10 +20,10 @@ flowchart LR
 
 | Layer | v1 (production today) | v2 (this repo) |
 |-------|------------------------|----------------|
-| Crawler | `tiltcheck-monorepo/scripts/email-crawler.ts` | Unchanged until ingest migrates ([v1-ops.md](./v1-ops.md)) |
-| Ingest | `POST /rgaas/email-ingest` on production API | Not exposed yet |
-| Read API | `GET /bonuses?source=inbox` | `GET /bonuses`, `GET /bonuses/picks` (proxies upstream or static fallback) |
-| Web | Legacy `tiltcheck.me/bonuses` | `/bonuses` — Today's picks (2–3 cards) |
+| Crawler | `tiltcheck-monorepo/scripts/email-crawler.ts` | `scripts/email-crawler.ts` (`pnpm crawl:emails`) |
+| Ingest | `POST /rgaas/email-ingest` on production API | `POST /rgaas/email-ingest` on v2 API (parse + Supabase/JSON feed) |
+| Read API | `GET /bonuses?source=inbox` | `GET /bonuses`, `GET /bonuses/inbox`, `GET /bonuses/picks` |
+| Web | Legacy `tiltcheck.me/bonuses` | `/bonuses` — live inbox grid from your email feed |
 | Dashboard | Legacy bonus hub | **Phase 3** — full list on Bonuses tab |
 
 ## v2 API contract

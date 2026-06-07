@@ -2,123 +2,151 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import BonusGrid, { type BonusEntry } from '@/components/BonusGrid';
 
-interface BonusPick {
+interface BonusApiRow {
   id: string;
-  casinoName: string;
-  offerTitle: string;
+  casinoName?: string;
+  brand?: string;
+  offerTitle?: string;
+  bonus?: string;
   url: string;
-  expiresAt: string | null;
-  expiryMessage: string | null;
-  expiresSoon: boolean;
-  urgent: boolean;
-  source: string;
+  verified?: string;
+  code?: string | null;
+  expiresAt?: string | null;
+  expiryMessage?: string | null;
+  expiresSoon?: boolean;
+  urgent?: boolean;
+  imageUrl?: string | null;
 }
 
-interface PicksResponse {
+interface FeedResponse {
   success: boolean;
   source: string;
+  updatedAt?: string | null;
+  total?: number;
+  available?: boolean;
   message?: string;
-  data: BonusPick[];
+  data: BonusApiRow[];
 }
 
-function formatExpiry(pick: BonusPick): string | null {
-  if (pick.expiresAt) {
-    const date = new Date(pick.expiresAt);
-    if (!Number.isNaN(date.getTime())) {
-      return `Expires ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
-    }
-  }
-  if (pick.expiryMessage && pick.expiryMessage !== 'Expiry not stated in email') {
-    return pick.expiryMessage;
-  }
-  return null;
+function mapRow(row: BonusApiRow): BonusEntry | null {
+  const brand = row.casinoName ?? row.brand;
+  const bonus = row.offerTitle ?? row.bonus;
+  if (!brand || !bonus || !row.url) return null;
+  return {
+    id: row.id,
+    brand,
+    bonus,
+    url: row.url,
+    verified: row.verified ?? new Date().toISOString(),
+    code: row.code ?? null,
+    expiresAt: row.expiresAt ?? null,
+    expiryMessage: row.expiryMessage ?? null,
+    expiresSoon: row.expiresSoon,
+    urgent: row.urgent,
+    imageUrl: row.imageUrl ?? null,
+  };
 }
 
 export default function BonusesPage() {
-  const [picks, setPicks] = useState<BonusPick[]>([]);
+  const [bonuses, setBonuses] = useState<BonusEntry[]>([]);
   const [source, setSource] = useState('loading');
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadFeed() {
+    setRefreshing(true);
+    try {
+      const res = await fetch('/api/backend/bonuses?limit=50&sort=urgency', { cache: 'no-store' });
+      const payload = (res.ok ? await res.json() : null) as FeedResponse | null;
+      if (!payload?.data?.length) {
+        setBonuses([]);
+        setSource(payload?.source ?? 'unavailable');
+        setUpdatedAt(payload?.updatedAt ?? null);
+        setNotice(
+          payload?.message ??
+            'No live inbox bonuses yet. Run the email crawler to ingest casino marketing mail.',
+        );
+        return;
+      }
+      const mapped = payload.data.map(mapRow).filter((row): row is BonusEntry => row !== null);
+      setBonuses(mapped);
+      setSource(payload.source);
+      setUpdatedAt(payload.updatedAt ?? null);
+      setNotice(payload.message ?? null);
+    } catch {
+      setBonuses([]);
+      setSource('unavailable');
+      setNotice('Could not load bonus feed.');
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   useEffect(() => {
-    fetch('/api/backend/bonuses/picks?limit=3', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((payload: PicksResponse | null) => {
-        if (!payload?.data?.length) {
-          setPicks([]);
-          setSource('unavailable');
-          setNotice('No live picks right now. Check back after the inbox crawler runs.');
-          return;
-        }
-        setPicks(payload.data);
-        setSource(payload.source);
-        setNotice(payload.message ?? null);
-      })
-      .catch(() => {
-        setPicks([]);
-        setSource('unavailable');
-        setNotice('Could not load bonus picks.');
-      });
+    void loadFeed();
   }, []);
+
+  const updatedLabel = updatedAt
+    ? new Date(updatedAt).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
 
   return (
     <main className="public-page text-white">
       <section className="hero-surface">
         <div className="landing-shell">
-          <span className="brand-eyebrow">Today&apos;s picks</span>
-          <h1 className="landing-hero-title">Inbox bonuses worth a look</h1>
+          <span className="brand-eyebrow">Bonus intel</span>
+          <h1 className="landing-hero-title">Claim first. Deposit later.</h1>
           <p className="landing-hero-subtitle">
-            Parsed from casino marketing email (v1 ingest). We surface urgency and expiry — you still
-            verify terms on the casino site. Feed: {source}.
+            Live offers parsed from your casino marketing inbox — urgency, expiry, and promo codes when
+            the email includes them. Verify terms on the casino site before you claim.
           </p>
-          {notice ? <p className="mt-3 text-sm text-white/70">{notice}</p> : null}
+          <div className="mt-4 flex flex-wrap gap-3 items-center">
+            <button
+              type="button"
+              onClick={() => void loadFeed()}
+              disabled={refreshing}
+              className="btn btn-secondary btn-sm"
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh feed'}
+            </button>
+            <Link href="/casinos" className="btn btn-primary btn-sm">
+              Check casino trust
+            </Link>
+          </div>
+          <p className="mt-3 text-[11px] font-mono uppercase tracking-[0.16em] text-gray-500">
+            {bonuses.length} offers · source: {source}
+            {updatedLabel ? ` · updated ${updatedLabel}` : ''}
+          </p>
+          {notice ? <p className="mt-3 text-sm text-white/70 max-w-2xl">{notice}</p> : null}
         </div>
       </section>
 
       <section className="public-page-section px-4">
-        <div className="landing-shell public-page-grid public-page-grid--3">
-          {picks.map((pick) => {
-            const expiry = formatExpiry(pick);
-            return (
-              <article key={pick.id} className="public-page-card flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2 items-center">
-                  <p className="public-page-card__eyebrow m-0">{pick.casinoName}</p>
-                  {pick.expiresSoon || pick.urgent ? (
-                    <span className="text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded bg-amber-500/20 text-amber-200 border border-amber-500/40">
-                      Expires soon
-                    </span>
-                  ) : null}
-                </div>
-                <h2 className="public-page-card__title text-lg">{pick.offerTitle}</h2>
-                {expiry ? <p className="text-sm text-white/60 m-0">{expiry}</p> : null}
-                <div className="mt-auto flex flex-wrap gap-2">
-                  <a
-                    href={pick.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary btn-sm"
-                  >
-                    View offer
-                  </a>
-                  <Link href="/casinos" className="btn btn-secondary btn-sm">
-                    Casino trust
-                  </Link>
-                </div>
-              </article>
-            );
-          })}
+        <div className="landing-shell">
+          {bonuses.length === 0 ? (
+            <div className="public-page-card py-20 text-center">
+              <p className="font-mono text-xs uppercase tracking-widest text-[#17c3b2] mb-2">
+                [INBOX FEED EMPTY]
+              </p>
+              <p className="font-mono text-[#8a97a8] text-sm max-w-xl mx-auto leading-relaxed">
+                Run <code className="text-[#17c3b2]">pnpm crawl:emails</code> from the repo with{' '}
+                <code className="text-[#17c3b2]">CRAWLER_EMAIL</code> and{' '}
+                <code className="text-[#17c3b2]">CRAWLER_APP_PASSWORD</code> set. Offers appear here
+                after ingest.
+              </p>
+            </div>
+          ) : (
+            <BonusGrid bonuses={bonuses} />
+          )}
         </div>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/casinos" className="btn btn-secondary">
-            Browse casinos
-          </Link>
-          <Link href="/extension" className="btn btn-primary">
-            Install extension
-          </Link>
-        </div>
-        <p className="mt-6 text-sm text-white/50 max-w-2xl">
-          Full bonus list and dashboard tab ship in Phase 3. No wallet linking or auto-claim.
-        </p>
       </section>
     </main>
   );

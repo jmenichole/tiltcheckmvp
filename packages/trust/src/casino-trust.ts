@@ -4,7 +4,7 @@ import {
   getCommunityDefaultCasinoPriority,
   normalizeCasinoName,
 } from '@tiltcheck/shared';
-import RAW_CASINOS from './casinos.json';
+import RAW_CASINOS from './casinos.json' with { type: 'json' };
 
 export interface LiveTrustScore {
   casinoName: string;

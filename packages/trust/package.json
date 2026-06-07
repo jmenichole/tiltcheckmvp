@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/casinos.json','dist/casinos.json')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "echo ok"
   },

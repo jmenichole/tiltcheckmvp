@@ -2,6 +2,25 @@
 
 TiltCheck v2 runs as **two Railway services** (web + api) connected to one Supabase project. Use Railway’s GitHub integration — **no SSH deploy keys** unless you add your own VPS.
 
+## Git → Railway (branch sync)
+
+Railway auto-deploys from GitHub branch **`main`** (`jmenichole/tiltcheckmvp`). Pushes to **`master` only** do not trigger deploys.
+
+| Workflow | Command |
+|----------|---------|
+| **Standard** (recommended) | Work on local `main`, then `git push origin main` |
+| **Keep both remotes in sync** | `.\scripts\push-both.ps1` after commit (pushes `main` → `origin/main` + `origin/master`) |
+| **One-off sync** | `git push origin main:master` |
+
+First-time local setup:
+
+```powershell
+git branch -M main
+git push -u origin main
+```
+
+`railway redeploy` restarts the last image without rebuilding. After pushing code, wait for GitHub deploy or run `railway up -s tiltcheckmvp` / `railway up -s tiltcheck-api`.
+
 ## Services
 
 | Service | Root directory | Build | Start |

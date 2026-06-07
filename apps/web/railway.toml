@@ -1,8 +1,12 @@
-# Railway service: web (set service root to monorepo root, or use these commands from apps/web)
+# Railway config for Web service
+# In Railway dashboard: Service → Settings → Config file path → /apps/web/railway.toml
+# Repo root must be monorepo root (not apps/web)
+
 [build]
-buildCommand = "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web build"
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/web build"
 
 [deploy]
-startCommand = "cd ../.. && pnpm --filter @tiltcheck/web start"
+startCommand = "pnpm --filter @tiltcheck/web start"
 healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"

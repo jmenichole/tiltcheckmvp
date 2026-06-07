@@ -69,5 +69,6 @@ pnpm test:e2e             # Playwright smoke (web)
 | [v1-ops.md](./docs/v1-ops.md) | Email crawler + legacy monorepo until cutover |
 | [bonuses.md](./docs/bonuses.md) | Inbox bonuses: crawler → API → `/bonuses` |
 | [migration-from-v1.md](./docs/migration-from-v1.md) | v1 → v2 path mapping |
+| [knowledge-capture/2026-05-27-tiltcheck-v2-session.md](./docs/knowledge-capture/2026-05-27-tiltcheck-v2-session.md) | Session decisions + runbook (Notion paste source) |
 
 Repo: https://github.com/jmenichole/tiltcheckmvp

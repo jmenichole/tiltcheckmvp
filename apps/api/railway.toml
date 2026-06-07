@@ -1,8 +1,12 @@
-# Railway service: api (set service root to monorepo root, or use these commands from apps/api)
+# Railway config for API service
+# In Railway dashboard: Service → Settings → Config file path → /apps/api/railway.toml
+# Repo root must be monorepo root (not apps/api)
+
 [build]
-buildCommand = "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/api build"
+builder = "RAILPACK"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @tiltcheck/api build"
 
 [deploy]
-startCommand = "cd ../.. && pnpm --filter @tiltcheck/api start"
+startCommand = "pnpm --filter @tiltcheck/api start"
 healthcheckPath = "/health"
 restartPolicyType = "ON_FAILURE"

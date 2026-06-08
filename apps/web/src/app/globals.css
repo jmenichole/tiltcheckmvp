@@ -1291,9 +1291,16 @@ body.degen-background > * {
   text-align: center;
 }
 
-.landing-hero-kicker {
-  max-width: 22ch;
+.landing-hero-kicker-block {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 28ch;
   margin: 1.1rem auto 0;
+  text-align: center;
+}
+
+.landing-hero-kicker {
+  margin: 0;
   font-size: clamp(1.2rem, 2.2vw, 1.55rem);
   font-weight: 750;
   line-height: 1.2;
@@ -1303,6 +1310,10 @@ body.degen-background > * {
   text-shadow:
     0 2px 18px rgba(0, 0, 0, 0.95),
     0 0 36px rgba(0, 0, 0, 0.65);
+}
+
+.landing-hero-kicker--second {
+  color: #e8f4f2;
 }
 
 .landing-hero-subtitle--centered {

@@ -1330,6 +1330,32 @@ body.degen-background > * {
   font-weight: 500;
 }
 
+.landing-authed-home__title {
+  max-width: 22ch;
+}
+
+.landing-authed-home__status {
+  margin-top: 2rem;
+  width: min(100%, 40rem);
+}
+
+.landing-authed-home__tertiary {
+  margin-top: 1.5rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+
+.landing-authed-home__tertiary a {
+  color: #17c3b2;
+  text-decoration: none;
+}
+
+.landing-authed-home__tertiary a:hover {
+  text-decoration: underline;
+}
+
 .hero-content {
   max-width: 820px;
   margin: 0 auto;

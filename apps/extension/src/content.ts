@@ -14,8 +14,6 @@ import {
   dismissTiltWarningBanner,
   showTiltWarningBanner,
 } from './tilt-warnings.js';
-import { pushSettingsToApi } from './settings-sync.js';
-
 const hostname = window.location.hostname.toLowerCase();
 const excluded =
   hostname.includes('discord.com') ||
@@ -108,7 +106,18 @@ if (!excluded) {
     sidebar = new TiltCheckSidebar(host, buildPanelState(initial as PanelState), {
       onLogin: () => openDiscordLogin(),
       onSync: () => {
-        chrome.runtime.sendMessage({ type: 'sync-vault' }).catch(() => {});
+        saveStatus = 'Refreshing rules from account…';
+        sidebar?.update({ saveStatus });
+        chrome.runtime
+          .sendMessage({ type: 'sync-vault' })
+          .then(() => {
+            saveStatus = 'Rules refreshed.';
+            sidebar?.update({ saveStatus });
+          })
+          .catch(() => {
+            saveStatus = 'Refresh failed — try again.';
+            sidebar?.update({ saveStatus });
+          });
       },
       onToggleExpand: () => {
         panelExpanded = !panelExpanded;
@@ -143,26 +152,6 @@ if (!excluded) {
           sessionCapArmed: enforcementEnabled,
           sessionCapMinutes: minutes,
         });
-      },
-      onSaveGameExclusions: async (entries) => {
-        const token = await getToken();
-        if (!token) {
-          saveStatus = 'Connect Discord to save game blocks.';
-          sidebar?.update({ saveStatus });
-          return;
-        }
-        saveStatus = 'Saving game blocks...';
-        sidebar?.update({ saveStatus });
-        const result = await pushSettingsToApi(token, { gameExclusions: entries });
-        if (!result.ok) {
-          saveStatus = result.error;
-          sidebar?.update({ saveStatus });
-          return;
-        }
-        gameExclusions = result.settings.gameExclusions;
-        gameWatcher.setExclusions(gameExclusions);
-        saveStatus = 'Game blocks saved.';
-        sidebar?.update({ saveStatus, gameExclusions });
       },
     });
   }

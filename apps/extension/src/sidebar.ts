@@ -2,13 +2,11 @@ import { webBaseUrl } from './config.js';
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
-import { GAME_EXCLUSION_PRESETS, type GameExclusionEntry } from '@tiltcheck/shared';
+import type { GameExclusionEntry } from '@tiltcheck/shared';
 import type { TiltWarningState } from './tilt-warnings.js';
 
 const CHIP_SIZE = 40;
 const PANEL_Z = 2147483646;
-const INLINE_PRESETS = GAME_EXCLUSION_PRESETS.slice(0, 6);
-
 export type GameMatchInfo = {
   status: GameMatchStatus;
   label?: string;
@@ -42,7 +40,6 @@ export type PanelActions = {
   onToggleExpand: () => void;
   onPositionChange: (pos: { left: number; top: number }) => void;
   onSaveLockoutMinutes: (minutes: number) => void;
-  onSaveGameExclusions: (entries: GameExclusionEntry[]) => void;
 };
 
 const RISK_LABELS: Record<RiskProfile, string> = {
@@ -106,26 +103,6 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
   };
 }
 
-function isPresetEnabled(entries: GameExclusionEntry[], label: string): boolean {
-  return entries.some((e) => e.source === 'preset' && e.label === label);
-}
-
-function togglePreset(entries: GameExclusionEntry[], label: string, patterns: string[]): GameExclusionEntry[] {
-  if (isPresetEnabled(entries, label)) {
-    return entries.filter((e) => !(e.source === 'preset' && e.label === label));
-  }
-  return [
-    ...entries,
-    {
-      id: crypto.randomUUID(),
-      label,
-      matchPatterns: [...patterns],
-      mode: 'block',
-      source: 'preset',
-    },
-  ];
-}
-
 export class TiltCheckSidebar {
   private host: HTMLElement;
   private state: PanelState;
@@ -133,7 +110,6 @@ export class TiltCheckSidebar {
   private chipEl: HTMLElement | null = null;
   private panelEl: HTMLElement | null = null;
   private draftLockoutMinutes = 5;
-  private draftGameExclusions: GameExclusionEntry[] = [];
   private drag: { pointerId: number; startX: number; startY: number; originLeft: number; originTop: number; w: number; h: number } | null =
     null;
 
@@ -142,7 +118,6 @@ export class TiltCheckSidebar {
     this.state = initial;
     this.actions = actions;
     this.draftLockoutMinutes = initial.sessionCapMinutes;
-    this.draftGameExclusions = [...initial.gameExclusions];
     this.render();
     window.addEventListener('resize', () => this.clampAndMove());
   }
@@ -150,9 +125,6 @@ export class TiltCheckSidebar {
   update(partial: Partial<PanelState>) {
     if (partial.sessionCapMinutes !== undefined) {
       this.draftLockoutMinutes = partial.sessionCapMinutes;
-    }
-    if (partial.gameExclusions !== undefined) {
-      this.draftGameExclusions = [...partial.gameExclusions];
     }
     this.state = { ...this.state, ...partial };
     this.render();
@@ -304,13 +276,10 @@ export class TiltCheckSidebar {
       .filter(Boolean)
       .join('<br/>');
 
-    const presetRows = INLINE_PRESETS.map((preset) => {
-      const checked = isPresetEnabled(this.draftGameExclusions, preset.label);
-      return `<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer" data-tc-no-drag>
-        <input type="checkbox" data-tc-preset="${preset.label}" ${checked ? 'checked' : ''} ${this.state.loggedIn ? '' : 'disabled'} />
-        ${preset.label}
-      </label>`;
-    }).join('');
+    const blockCount = this.state.gameExclusions.length;
+    const gameBlocksSection = this.state.loggedIn
+      ? `<strong>${blockCount}</strong> active — <button type="button" data-tc-settings-more data-tc-no-drag style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit;text-decoration:underline">Edit on web</button><br/><span style="color:#6b7280;font-size:10px;line-height:1.4">Save blocks in Settings, then tap Refresh rules.</span>`
+      : '<span style="color:#6b7280">Connect Discord, set blocks on web, then Refresh rules.</span>';
 
     const warnBanner =
       this.state.gameMatch.status === 'warn' || this.state.gameMatch.status === 'demo-banner'
@@ -329,14 +298,7 @@ export class TiltCheckSidebar {
           <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:11px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
         </div>
       </section>
-      <section data-tc-no-drag>
-        <div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game blocks</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:6px">${presetRows}</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button type="button" data-tc-save-games style="padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:11px" ${this.state.loggedIn ? '' : 'disabled'}>Save blocks</button>
-          <button type="button" data-tc-settings-more style="padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.2);background:transparent;color:#9ca3af;cursor:pointer;font:inherit;font-size:11px">More on web</button>
-        </div>
-      </section>
+      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game blocks</div>${gameBlocksSection}</section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game match</div>${this.gameMatchHtml()}</section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Tilt warnings</div>${this.tiltWarningHtml()}</section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Live stats</div>
@@ -344,7 +306,7 @@ export class TiltCheckSidebar {
         Latest: ${this.indicatorHtml()}
       </section>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
-        <button type="button" data-tc-sync data-tc-no-drag style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600" title="Pull game blocks and lockout rules from your account">Refresh rules</button>
+        <button type="button" data-tc-sync data-tc-no-drag style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600" title="Pull game blocks (from web settings) and lockout rules from your account">Refresh rules</button>
       </div>
       ${this.state.saveStatus ? `<p data-tc-no-drag style="margin:4px 0 0;font-size:11px;color:#9ca3af">${this.state.saveStatus}</p>` : ''}
     `;
@@ -381,18 +343,5 @@ export class TiltCheckSidebar {
       this.actions.onSaveLockoutMinutes(this.draftLockoutMinutes);
     });
 
-    body.querySelectorAll('[data-tc-preset]').forEach((el) => {
-      el.addEventListener('change', () => {
-        const label = (el as HTMLInputElement).dataset.tcPreset;
-        if (!label) return;
-        const preset = INLINE_PRESETS.find((p) => p.label === label);
-        if (!preset) return;
-        this.draftGameExclusions = togglePreset(this.draftGameExclusions, preset.label, preset.matchPatterns);
-      });
-    });
-
-    body.querySelector('[data-tc-save-games]')?.addEventListener('click', () => {
-      this.actions.onSaveGameExclusions(this.draftGameExclusions);
-    });
   }
 }

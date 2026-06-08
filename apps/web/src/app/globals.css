@@ -1070,7 +1070,7 @@ body.degen-background {
   background-image: url('/assets/backgroundglitter.png');
   background-size: cover;
   background-repeat: no-repeat;
-  background-position: left top;
+  background-position: center center;
   background-attachment: scroll; /* fixed breaks on iOS Safari */
   min-height: 100vh;
   position: relative;

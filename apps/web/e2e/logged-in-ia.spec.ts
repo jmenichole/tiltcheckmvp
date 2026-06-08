@@ -26,4 +26,10 @@ test.describe('logged-in IA', () => {
     await page.goto('/login?redirect=/settings');
     await expect(page).toHaveURL(/\/settings$/);
   });
+
+  test('logged-out home shows marketing hero', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: /house always wins/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /install the extension/i }).first()).toBeVisible();
+  });
 });

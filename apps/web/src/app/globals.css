@@ -1292,7 +1292,7 @@ body.degen-background > * {
 }
 
 .landing-hero-title--centered {
-  max-width: 18ch;
+  max-width: 14ch;
   text-align: center;
 }
 
@@ -1318,7 +1318,8 @@ body.degen-background > * {
 }
 
 .landing-hero-kicker--second {
-  color: #e8f4f2;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: #d8fff9;
 }
 
 .landing-hero-subtitle--centered {
@@ -1607,6 +1608,26 @@ body.degen-background > * {
   font-size: 1rem;
   line-height: 1.65;
   color: #b4c0cd;
+}
+
+.landing-session-mock__shell {
+  display: grid;
+  gap: 1.25rem;
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.landing-session-mock__heading {
+  text-align: center;
+}
+
+.landing-session-mock__title {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.2rem, 1rem + 0.7vw, 1.55rem);
+  font-weight: 760;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #f5fbff;
 }
 
 .landing-visual-placeholder {

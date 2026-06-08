@@ -14,18 +14,18 @@ interface VaultRule {
 const VAULT_STEPS = [
   {
     step: '01',
-    title: 'Set your cap',
-    description: 'Pick how long Touch Grass locks the screen when tilt goes critical.',
+    title: 'Block problem games',
+    description: 'In Settings: exclude games by preset, keywords, or pasted URL. Block or warn per game.',
   },
   {
     step: '02',
-    title: 'Play your session',
-    description: 'Extension watches pacing on casino tabs. Read-only. No wallet access.',
+    title: 'Set your session cap',
+    description: 'How long Touch Grass locks the screen — for tilt critical and blocked-game lockouts.',
   },
   {
     step: '03',
-    title: 'Touch Grass saves you',
-    description: 'Fullscreen lockout. No dismiss. Timer runs, you walk away.',
+    title: 'Play with the extension on',
+    description: 'Read-only watcher on casino tabs. Tilt sensitivity controls how early warnings fire.',
   },
 ] as const;
 
@@ -86,8 +86,8 @@ export default function DashboardPage() {
           <h1 className="brand-page-title">Dashboard</h1>
           <p className="brand-lead">
             {user
-              ? `${user.username} — set your line, let the extension enforce it.`
-              : 'Set your line. The extension enforces it when you start tilting.'}
+              ? `${user.username} — block problem games, set your cap, let the extension enforce both.`
+              : 'Block problem games in Settings. Set your cap here. The extension enforces both on casino tabs.'}
           </p>
 
           <div className="dashboard-tab-bar" role="tablist" aria-label="Dashboard sections">
@@ -110,8 +110,8 @@ export default function DashboardPage() {
                     <span className="brand-eyebrow">Touch Grass vault</span>
                     <h2 className="public-page-section-heading__title">Set your walk-away line</h2>
                     <p className="public-page-section-heading__copy brand-lead">
-                      Help me walk away — that is the job. You pick the lockout. We pull you out before
-                      you give the wins back.
+                      Session cap minutes apply to Touch Grass lockouts — tilt critical or opening a game
+                      you blocked.
                     </p>
                   </div>
                 </div>

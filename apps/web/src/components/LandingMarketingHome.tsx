@@ -4,18 +4,21 @@ import LandingSessionMock from '@/components/LandingSessionMock';
 const coreJobs = [
   {
     step: '01',
-    title: 'Kill the Auto-Pilot',
-    description: 'Tracks click-speed and bet pacing. Wakes you up when you play like a bot.',
+    title: 'Block Your Problem Games',
+    description:
+      'Pick the games that wreck you — blackjack, crash, live dealer. Paste a link or keywords. Block instantly or get a 10-second warn first.',
   },
   {
     step: '02',
-    title: 'Read the Room',
-    description: 'Flags sus pacing and pressure loops while you are still in the session.',
+    title: 'Catch Tilt on the Tab',
+    description:
+      'Chrome extension watches bet pacing and click speed on casino sites. Read-only. No wallet passwords. Alerts when you shift into autopilot.',
   },
   {
     step: '03',
-    title: 'Enforce the Exit',
-    description: 'Set your line. We enforce it — not passive warnings.',
+    title: 'Lock the Tab at Your Line',
+    description:
+      'Set a session cap in your dashboard. Open a blocked game or hit critical tilt → Touch Grass fullscreen lockout until the timer ends. No dismiss.',
   },
 ];
 
@@ -36,8 +39,8 @@ export default function LandingMarketingHome() {
             </span>
           </div>
           <p className="landing-hero-subtitle landing-hero-subtitle--centered landing-hero-subtitle--lede">
-            TiltCheck is the read-only friction layer that tracks session drift in real time and pulls
-            you out before you rug your own bankroll.
+            TiltCheck is a read-only Chrome extension. Block specific games you know are traps, catch tilt
+            when your pacing shifts, and lock the casino tab when you cross the line you set.
           </p>
 
           <LandingHeroActions />

@@ -31,8 +31,8 @@ function LoginContent() {
           <span className="brand-eyebrow">Discord login</span>
           <h1 className="landing-hero-title landing-hero-title--centered">Connect your account</h1>
           <p className="landing-hero-subtitle landing-hero-subtitle--centered">
-            One login for your vault rules and extension sync. No separate dashboard subdomain — just
-            tiltcheck.me.
+            One login for game exclusions, tilt sensitivity, session cap, and extension sync. No separate
+            dashboard subdomain — just tiltcheck.me.
           </p>
           <div className="hero-actions">
             <a href={loginUrl} className="btn btn-primary">

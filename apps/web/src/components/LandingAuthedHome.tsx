@@ -63,7 +63,7 @@ export default function LandingAuthedHome() {
   const capArmed = capMinutes !== null;
   const lede = capArmed
     ? `${capMinutes}-minute Touch Grass cap is armed. Play smart or don't play.`
-    : "Set your walk-away line. The extension can't enforce what you haven't configured.";
+    : "Set your walk-away line and block problem games in Settings. The extension can't enforce what you haven't configured.";
 
   const primaryHref = '/dashboard';
   const primaryLabel = capArmed ? 'OPEN DASHBOARD' : 'SET YOUR LINE';
@@ -121,11 +121,11 @@ export default function LandingAuthedHome() {
           ) : null}
 
           <p className="landing-authed-home__tertiary">
+            <Link href="/settings">Game exclusions</Link>
+            {' · '}
             <Link href="/casinos">Casino trust</Link>
             {' · '}
             <Link href="/bonuses">Bonuses</Link>
-            {' · '}
-            <Link href="/settings">Settings</Link>
           </p>
         </div>
       </section>

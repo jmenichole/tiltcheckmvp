@@ -21,17 +21,24 @@ const SIDE_QUESTS = [
     external: false,
   },
   {
+    href: '/settings',
+    eyebrow: 'Protection',
+    title: 'Block Problem Games',
+    copy: 'Paste a game link or keywords. Block blackjack, crash, or whatever wrecks you — before tilt starts.',
+    external: false,
+  },
+  {
     href: '/dashboard',
     eyebrow: 'Protection',
     title: 'Tweak Your Vault Cap',
-    copy: "While you're thinking clearly, adjust your session cap for next time.",
+    copy: "Same timer for Touch Grass lockouts — tilt critical or opening a blocked game.",
     external: false,
   },
   {
     href: '/extension',
     eyebrow: 'Protection',
     title: 'Extension Setup',
-    copy: 'Install or reconnect Discord so vault rules follow you across tabs.',
+    copy: 'Install or reconnect Discord so game exclusions and vault rules follow you across tabs.',
     external: false,
   },
   {

@@ -1,5 +1,28 @@
 import Link from 'next/link';
 
+const setupSteps = [
+  {
+    step: '01',
+    title: 'Install the extension',
+    copy: 'Add TiltCheck from the Chrome Web Store. It runs read-only on casino tabs — no wallet access.',
+  },
+  {
+    step: '02',
+    title: 'Connect Discord',
+    copy: 'One login syncs your game exclusions, tilt sensitivity, and session cap across dashboard and extension.',
+  },
+  {
+    step: '03',
+    title: 'Block your problem games',
+    copy: 'In Settings: toggle presets (blackjack, crash, slots…) or paste a game URL / custom keywords. Choose block or warn per game.',
+  },
+  {
+    step: '04',
+    title: 'Set tilt sensitivity + session cap',
+    copy: 'Pick how early tilt warnings fire. Set how many minutes Touch Grass locks the tab when a block or critical tilt hits.',
+  },
+] as const;
+
 export default function ExtensionPage() {
   return (
     <main className="public-page text-white">
@@ -8,7 +31,8 @@ export default function ExtensionPage() {
           <span className="brand-eyebrow">Chrome extension</span>
           <h1 className="landing-hero-title">Install TiltCheck</h1>
           <p className="landing-hero-subtitle">
-            Read-only protection on casino tabs. Connect Discord to sync vault rules with your dashboard.
+            Block games you know are traps. Catch tilt when pacing shifts. Lock the tab at the line you
+            set — all read-only on casino sites.
           </p>
           <div className="hero-actions">
             <a
@@ -22,16 +46,41 @@ export default function ExtensionPage() {
             <Link href="/login" className="btn btn-secondary">
               CONNECT DISCORD
             </Link>
+            <Link href="/settings" className="btn btn-ghost">
+              GAME EXCLUSIONS
+            </Link>
           </div>
         </div>
       </section>
+
+      <section className="public-page-section px-4">
+        <div className="landing-shell">
+          <div className="public-page-section-heading">
+            <span className="brand-eyebrow">Setup</span>
+            <h2 className="public-page-section-heading__title">Four steps to full protection</h2>
+          </div>
+          <div className="public-page-grid public-page-grid--2">
+            {setupSteps.map((item) => (
+              <article key={item.step} className="public-page-card">
+                <p className="public-page-card__eyebrow">Step {item.step}</p>
+                <h3 className="public-page-card__title">{item.title}</h3>
+                <p className="public-page-card__copy">{item.copy}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="public-page-section px-4">
         <div className="landing-shell public-page-card">
           <h2 className="public-page-card__title">Demo mode</h2>
           <p className="public-page-card__copy">
-            Logged out? The extension still runs tilt detection locally. Sign in to sync vault rules and
-            settings across devices.
+            Logged out? The extension still detects tilt locally. Sign in to sync game exclusions, tilt
+            sensitivity, and your session cap — enforcement follows you on every casino tab.
           </p>
+          <Link href="/dashboard" className="btn btn-ghost btn-sm mt-4">
+            Open dashboard
+          </Link>
         </div>
       </section>
     </main>

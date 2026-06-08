@@ -79,7 +79,7 @@ export default function SettingsPage() {
         <div className="landing-shell">
           <span className="brand-eyebrow">Account</span>
           <h1 className="brand-page-title">Profile &amp; settings</h1>
-          <p className="brand-lead">Discord identity, tilt sensitivity, and how hard we nudge you.</p>
+          <p className="brand-lead">Game exclusions, tilt sensitivity, and how hard we nudge you.</p>
         </div>
       </section>
 

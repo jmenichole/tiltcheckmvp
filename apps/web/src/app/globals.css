@@ -1077,21 +1077,9 @@ body.degen-background {
   color: var(--text-primary);
 }
 
-/* Dark overlay — heavier at top so nav/hero don't pick up gray from the glitter wash */
+/* Glitter shown raw — no tint overlay (toggle back if copy needs more contrast) */
 body.degen-background::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(1, 2, 3, 0.98) 0%,
-      rgba(2, 3, 5, 0.96) 18%,
-      rgba(2, 3, 5, 0.95) 100%
-    ),
-    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.015), transparent 65%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 body.degen-background > * {

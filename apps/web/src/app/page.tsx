@@ -1,4 +1,7 @@
 import Link from 'next/link';
+import LandingExtensionMock from '@/components/LandingExtensionMock';
+import LandingHeroActions from '@/components/LandingHeroActions';
+import LandingZeroTrustStrip from '@/components/LandingZeroTrustStrip';
 
 const coreJobs = [
   {
@@ -38,19 +41,16 @@ export default function Home() {
             TiltCheck is the read-only friction layer that tracks your session drift in real time.
             Kill the auto-pilot. Get pulled out before you rug your own bankroll.
           </p>
-          <div className="hero-actions">
-            <Link href="/extension" className="btn btn-primary">
-              INSTALL THE EXTENSION
-            </Link>
-            <Link href="/casinos" className="hero-actions__secondary-link">
-              CHECK CASINO TRUST
-            </Link>
-            <Link href="/bonuses" className="hero-actions__secondary-link">
-              TODAY&apos;S BONUSES
-            </Link>
-          </div>
+
+          <LandingHeroActions />
+
+          <p className="hero-privacy-guarantee">
+            Read-only extension. No wallet passwords. Your session logs stay on your machine — never sold.
+          </p>
         </div>
       </section>
+
+      <LandingZeroTrustStrip />
 
       <section className="public-page-section px-4">
         <div className="landing-shell">
@@ -72,20 +72,38 @@ export default function Home() {
         </div>
       </section>
 
+      <LandingExtensionMock />
+
       <section className="public-page-section px-4">
         <div className="landing-shell">
           <div className="public-page-cta-band">
-            <p className="public-page-panel__eyebrow">Ready to see it work?</p>
-            <h2 className="public-page-cta-band__title">
-              Install the extension and let TiltCheck watch your next session. Or check casino trust
-              scores before you deposit if you need the receipts first.
-            </h2>
-            <div className="public-page-cta-band__actions">
+            <p className="public-page-panel__eyebrow">Ready to kill the auto-pilot?</p>
+            <p className="public-page-cta-band__copy">
+              Install the extension and let TiltCheck watch your next session — or verify your casino&apos;s
+              receipts first.
+            </p>
+            <div className="public-page-cta-band__actions public-page-cta-band__actions--desktop">
               <Link href="/extension" className="btn btn-primary">
                 INSTALL THE EXTENSION
               </Link>
-              <Link href="/casinos" className="btn btn-secondary">
+              <Link href="/casinos" className="btn btn-ghost">
                 CHECK CASINO TRUST
+              </Link>
+            </div>
+            <div className="public-page-cta-band__actions public-page-cta-band__actions--mobile">
+              <a
+                href="https://discord.gg/gdBsEJfCar"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-discord"
+              >
+                JOIN DISCORD
+              </a>
+              <Link href="/casinos" className="btn btn-ghost">
+                CHECK CASINO TRUST
+              </Link>
+              <Link href="/extension" className="hero-actions__desktop-link">
+                Get the desktop install link
               </Link>
             </div>
           </div>

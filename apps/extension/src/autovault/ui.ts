@@ -51,9 +51,9 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
     style.id = 'tc-av-share-styles';
     style.textContent = `
         #tc-av-share-root {
-            position: fixed; top: 72px; right: 12px; z-index: 2147483645;
+            position: fixed; bottom: 56px; right: calc(var(--tc-tilt-dock-offset, 0px) + 12px); z-index: 2147483647;
             font-family: ${BRAND.font}; font-size: 14px; color: ${BRAND.text};
-            min-width: 280px; max-width: min(360px, calc(100vw - 24px));
+            min-width: 280px; max-width: min(360px, calc(100vw - var(--tc-tilt-dock-offset, 0px) - 24px));
             background: ${BRAND.bgCard}; border: 1px solid ${BRAND.border};
             border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.55);
             user-select: none; overflow: hidden;
@@ -106,8 +106,8 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
         #tc-av-share-root .tc-footer { text-align: center; font-size: 10px; color: ${BRAND.muted };
             padding: 8px; border-top: 1px solid ${BRAND.border}; }
         #tc-av-share-stealth {
-            position: fixed; bottom: 14px; right: 14px; width: 14px; height: 14px; border-radius: 50%;
-            background: #4B5563; z-index: 2147483645; cursor: pointer;
+            position: fixed; bottom: 14px; right: calc(var(--tc-tilt-dock-offset, 0px) + 14px); width: 14px; height: 14px; border-radius: 50%;
+            background: #4B5563; z-index: 2147483647; cursor: pointer;
         }
         #tc-av-share-stealth.running { background: ${BRAND.teal}; }
         #tc-av-share-stealth.hidden { display: none; }

@@ -42,6 +42,7 @@ export type PanelState = {
   panelWidth: number;
   panelHeight: number;
   position: { left: number; top: number };
+  autoVaultSite: string | null;
 };
 
 export type PanelLayoutPatch = {
@@ -59,6 +60,7 @@ export type PanelActions = {
   onToggleAlwaysOn: () => void;
   onLayoutChange: (layout: PanelLayoutPatch) => void;
   onSaveLockoutMinutes: (minutes: number) => void;
+  onOpenAutoVault: () => void;
 };
 
 const RISK_SHORT: Record<RiskProfile, string> = {
@@ -138,6 +140,7 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     liveStats: { clicksIn5s: 0, latestIndicator: null },
     tiltWarning: { stage: 0, activeIndicator: null },
     saveStatus: '',
+    autoVaultSite: null,
   };
 }
 
@@ -438,6 +441,13 @@ export class TiltCheckSidebar {
         <span style="color:#6b7280;font-size:10px">min lock</span>
         <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:10px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
       </div>
+      ${
+        this.state.autoVaultSite
+          ? `<div data-tc-no-drag style="display:flex;gap:6px;align-items:center">
+        <button type="button" data-tc-autovault style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.45);background:rgba(23,195,178,.12);color:#17c3b2;cursor:pointer;font:inherit;font-size:11px;font-weight:600">AutoVault · ${this.state.autoVaultSite}</button>
+      </div>`
+          : ''
+      }
       <div data-tc-no-drag style="display:flex;gap:6px">
         <button type="button" data-tc-sync style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600">Sync</button>
         <button type="button" data-tc-settings-more style="padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.2);background:transparent;color:#9ca3af;cursor:pointer;font:inherit;font-size:10px">Web</button>
@@ -496,6 +506,7 @@ export class TiltCheckSidebar {
       window.open(`${webBaseUrl()}/settings#game-exclusion`, '_blank');
     });
     body.querySelector('[data-tc-sync]')?.addEventListener('click', () => this.actions.onSync());
+    body.querySelector('[data-tc-autovault]')?.addEventListener('click', () => this.actions.onOpenAutoVault());
     body.querySelector('[data-tc-lockout-min]')?.addEventListener('input', (e) => {
       const val = Number((e.target as HTMLInputElement).value);
       if (Number.isFinite(val)) this.draftLockoutMinutes = val;

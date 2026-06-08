@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TiltCheck",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Block problem games, catch tilt, skim wins to vault on Stake/nuts, and lock the tab at your line.",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["<all_urls>"],
@@ -13,16 +13,6 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "*://stake.us/*",
-        "*://*.stake.us/*",
-        "*://nuts.gg/*",
-        "*://*.nuts.gg/*"
-      ],
-      "js": ["autovault.js"],
       "run_at": "document_idle"
     },
     {

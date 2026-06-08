@@ -31,20 +31,12 @@ const sharedBuild = {
 
 async function build() {
   const dist = path.join(__dirname, 'dist');
-  await fs.rm(dist, { recursive: true, force: true });
   await fs.mkdir(dist, { recursive: true });
 
   await esbuild.build({
     ...sharedBuild,
     entryPoints: [path.join(__dirname, 'src/content.ts')],
     outfile: path.join(dist, 'content.js'),
-    format: 'iife',
-  });
-
-  await esbuild.build({
-    ...sharedBuild,
-    entryPoints: [path.join(__dirname, 'src/autovault-entry.ts')],
-    outfile: path.join(dist, 'autovault.js'),
     format: 'iife',
   });
 

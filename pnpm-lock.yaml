@@ -90,6 +90,10 @@ importers:
         version: 5.9.3
 
   apps/extension:
+    dependencies:
+      '@tiltcheck/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
     devDependencies:
       '@types/chrome':
         specifier: ^0.0.287

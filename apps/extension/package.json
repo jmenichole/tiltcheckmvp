@@ -13,7 +13,6 @@
     "@tiltcheck/shared": "workspace:*"
   },
   "devDependencies": {
-    "@tiltcheck/shared": "workspace:*",
     "@types/chrome": "^0.0.287",
     "esbuild": "^0.25.0",
     "typescript": "^5.7.2"

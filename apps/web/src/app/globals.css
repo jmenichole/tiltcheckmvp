@@ -30,7 +30,7 @@ html {
   padding: 0.75rem 1.25rem;
   min-height: 56px;
   box-sizing: border-box;
-  background: rgba(3, 4, 5, 0.97);
+  background: rgba(0, 0, 0, 0.94);
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -1082,19 +1082,8 @@ body.degen-background {
   color: var(--text-primary);
 }
 
-/* Neutral black tint — darkens the wash and kills the gray cast without hiding sparkle */
 body.degen-background::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.78) 0%,
-    rgba(0, 0, 0, 0.62) 45%,
-    rgba(0, 0, 0, 0.68) 100%
-  );
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 body.degen-background > * {
@@ -1285,21 +1274,6 @@ body.degen-background > * {
   padding: clamp(1.5rem, 3vw, 2.5rem) clamp(1.25rem, 2.5vw, 2rem);
 }
 
-/* Local scrim — glitter stays visible at edges, copy gets a readable pocket */
-.landing-hero-centered::before {
-  content: '';
-  position: absolute;
-  inset: -0.5rem -1rem;
-  z-index: -1;
-  border-radius: 1.5rem;
-  background: radial-gradient(
-    ellipse 95% 90% at 50% 42%,
-    rgba(0, 0, 0, 0.88) 0%,
-    rgba(0, 0, 0, 0.65) 52%,
-    transparent 78%
-  );
-  pointer-events: none;
-}
 
 .landing-hero-title--centered {
   max-width: 14ch;

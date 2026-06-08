@@ -23,7 +23,11 @@ export default function Home() {
     <main className="landing-page">
       <section className="hero-surface">
         <div className="landing-shell landing-hero-centered">
-          <h1 className="landing-hero-title landing-hero-title--centered">HOUSE ALWAYS WINS? FUCK THAT.</h1>
+          <h1 className="landing-hero-title landing-hero-title--centered">
+            HOUSE ALWAYS WINS?
+            <br />
+            FUCK THAT.
+          </h1>
           <div className="landing-hero-kicker-block">
             <p className="landing-hero-kicker">The math isn&apos;t rigged. Your dopamine is.</p>
             <p className="landing-hero-kicker landing-hero-kicker--second">The house banks on your tilt.</p>

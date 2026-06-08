@@ -594,6 +594,11 @@ body::before {
 }
 
 
+.btn,
+a.btn {
+  text-decoration: none;
+}
+
 .btn {
   position: relative;
   display: inline-flex;

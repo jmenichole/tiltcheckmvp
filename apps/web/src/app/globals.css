@@ -1079,8 +1079,8 @@ body.degen-background::before {
   position: fixed;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(2, 3, 5, 0.84) 0%, rgba(2, 3, 5, 0.92) 100%),
-    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.03), transparent 65%);
+    linear-gradient(180deg, rgba(2, 3, 5, 0.95) 0%, rgba(2, 3, 5, 0.95) 100%),
+    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.02), transparent 65%);
   pointer-events: none;
   z-index: 0;
 }

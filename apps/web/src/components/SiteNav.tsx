@@ -8,6 +8,24 @@ import { NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
 
 type NavUser = { username: string; avatarUrl: string | null } | null;
 
+function filterQuickLinks(links: typeof NAV_QUICK_LINKS, authed: boolean) {
+  if (!authed) return links;
+  return links.filter((link) => link.href !== '/dashboard');
+}
+
+function mapMenuGroups(groups: typeof NAV_MENU_GROUPS, authed: boolean) {
+  if (!authed) return groups;
+  return groups.map((group) => {
+    if (group.title !== 'Company') return group;
+    return {
+      ...group,
+      links: group.links.map((link) =>
+        link.href === '/' ? { ...link, label: 'Command center' } : link,
+      ),
+    };
+  });
+}
+
 function NavMenuLink({
   link,
   onNavigate,
@@ -122,14 +140,29 @@ export default function SiteNav() {
           <div className="nav-overlay" onClick={closeMenu} aria-hidden="true" />
           <nav className="nav-collapse nav-collapse--open" aria-label="Site menu">
             <div className="nav-collapse-links">
+              {user ? (
+                <div className="nav-collapse-group">
+                  <p className="nav-collapse-group__title">Account</p>
+                  <Link href="/dashboard" className="nav-sidebar-link" onClick={closeMenu}>
+                    Dashboard
+                  </Link>
+                  <Link href="/settings" className="nav-sidebar-link" onClick={closeMenu}>
+                    Profile &amp; settings
+                  </Link>
+                  <button type="button" className="nav-sidebar-link nav-sidebar-link--button" onClick={handleLogout}>
+                    Log out
+                  </button>
+                </div>
+              ) : null}
+
               <div className="nav-collapse-group">
                 <p className="nav-collapse-group__title">Quick links</p>
-                {NAV_QUICK_LINKS.map((link) => (
+                {filterQuickLinks(NAV_QUICK_LINKS, Boolean(user)).map((link) => (
                   <NavMenuLink key={link.label} link={link} onNavigate={closeMenu} />
                 ))}
               </div>
 
-              {NAV_MENU_GROUPS.map((group) => (
+              {mapMenuGroups(NAV_MENU_GROUPS, Boolean(user)).map((group) => (
                 <div key={group.title} className="nav-collapse-group">
                   <p className="nav-collapse-group__title">{group.title}</p>
                   {group.links.map((link) => (
@@ -137,21 +170,6 @@ export default function SiteNav() {
                   ))}
                 </div>
               ))}
-
-              {user ? (
-                <div className="nav-collapse-group">
-                  <p className="nav-collapse-group__title">Account</p>
-                  <Link href="/settings" className="nav-sidebar-link" onClick={closeMenu}>
-                    Profile &amp; settings
-                  </Link>
-                  <Link href="/dashboard" className="nav-sidebar-link" onClick={closeMenu}>
-                    Dashboard
-                  </Link>
-                  <button type="button" className="nav-sidebar-link nav-sidebar-link--button" onClick={handleLogout}>
-                    Log out
-                  </button>
-                </div>
-              ) : null}
             </div>
 
             <div className="nav-collapse-foot">

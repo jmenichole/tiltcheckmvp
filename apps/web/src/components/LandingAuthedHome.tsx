@@ -24,18 +24,19 @@ export default function LandingAuthedHome() {
     let cancelled = false;
 
     async function load() {
-      const meRes = await apiFetch('/auth/me');
+      const [meRes, vaultRes] = await Promise.all([apiFetch('/auth/me'), apiFetch('/vault')]);
+
       if (!meRes.ok) {
         if (!cancelled) setLoadState('fallback');
         return;
       }
-      const meData = await meRes.json();
+
+      const meData = (await meRes.json()) as { user?: { username: string } };
       if (!cancelled) {
         setUsername(meData.user?.username ?? 'Degen');
         setLoadState('authed');
       }
 
-      const vaultRes = await apiFetch('/vault');
       if (!vaultRes.ok) {
         if (!cancelled) setVaultError(true);
         return;

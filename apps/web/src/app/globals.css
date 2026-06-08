@@ -2212,8 +2212,8 @@ body.degen-background > * {
 .landing-page {
   display: flex;
   flex-direction: column;
-  gap: clamp(4rem, 7vw, 6.5rem);
-  padding: 0 0 clamp(4rem, 7vw, 6rem);
+  gap: clamp(2rem, 4vw, 3rem);
+  padding: 0 0 clamp(2.5rem, 4vw, 3.5rem);
   overflow-x: clip;
 }
 
@@ -3656,7 +3656,7 @@ body.degen-background > * {
 
 @media (max-width: 640px) {
   .landing-page {
-    gap: 3rem;
+    gap: 2rem;
     padding-bottom: 3rem;
   }
 
@@ -3909,6 +3909,23 @@ body.degen-background > * {
   max-width: 36rem;
   font-size: 0.9rem;
   line-height: 1.6;
+}
+
+.footer-bottom--minimal {
+  margin-top: 0;
+  padding-top: 2rem;
+}
+
+.footer-disclaimer {
+  margin: 0;
+  max-width: 36rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: #6b7a8d;
+}
+
+.footer-disclaimer a {
+  color: var(--color-primary);
 }
 
 .dashboard-layout {

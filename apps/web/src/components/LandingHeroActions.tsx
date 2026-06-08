@@ -27,17 +27,15 @@ export default function LandingHeroActions() {
       </div>
 
       <div className="hero-actions hero-actions--mobile">
-        <a
-          href={DISCORD_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary btn-discord"
-          data-funnel-event="landing_discord_click"
+        <Link
+          href="/extension"
+          className="btn btn-primary"
+          data-funnel-event="landing_install_click"
           data-funnel-source="web-home-hero-mobile"
-          data-funnel-label="Join Discord"
+          data-funnel-label="Install the Extension"
         >
-          JOIN DISCORD
-        </a>
+          INSTALL THE EXTENSION
+        </Link>
         <Link
           href="/casinos"
           className="btn btn-ghost"
@@ -47,9 +45,14 @@ export default function LandingHeroActions() {
         >
           CHECK CASINO TRUST
         </Link>
-        <Link href="/extension" className="hero-actions__desktop-link">
-          Get the desktop install link
-        </Link>
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hero-actions__desktop-link"
+        >
+          Join Discord
+        </a>
       </div>
     </>
   );

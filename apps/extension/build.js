@@ -6,12 +6,15 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isWatch = process.argv.includes('--watch');
 
+const DEFAULT_API_URL = 'https://tiltcheck-api-production.up.railway.app';
+const DEFAULT_WEB_URL = 'https://tiltcheckmvp-production.up.railway.app';
+
 const define = {
   'process.env.EXTENSION_API_URL': JSON.stringify(
-    process.env.EXTENSION_API_URL || 'http://localhost:3001',
+    process.env.EXTENSION_API_URL || DEFAULT_API_URL,
   ),
   'process.env.EXTENSION_WEB_URL': JSON.stringify(
-    process.env.EXTENSION_WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || 'http://localhost:3000',
+    process.env.EXTENSION_WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || DEFAULT_WEB_URL,
   ),
 };
 

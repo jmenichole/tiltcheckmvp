@@ -1,4 +1,4 @@
-import { apiBaseUrl, webBaseUrl } from './config.js';
+import { resolveApiBaseUrl, webBaseUrl } from './config.js';
 
 export type SidebarState = {
   loggedIn: boolean;
@@ -25,9 +25,13 @@ export function renderSidebar(root: HTMLElement, state: SidebarState) {
     ? `<strong>TiltCheck</strong><br/>Hi ${state.username}<br/><button id="tc-vault">Vault</button>`
     : `<strong>TiltCheck Demo</strong><br/>Local tilt detection active.<br/><button id="tc-login">Connect Discord</button>`;
   root.appendChild(panel);
-  panel.querySelector('#tc-login')?.addEventListener('click', () => {
-    const url = `${apiBaseUrl()}/auth/discord/login?source=ext`;
-    window.open(url, '_blank', 'width=520,height=720');
+  panel.querySelector('#tc-login')?.addEventListener('click', async () => {
+    const api = await resolveApiBaseUrl();
+    const url = `${api}/auth/discord/login?source=ext`;
+    const popup = window.open(url, 'tiltcheck-discord-auth', 'width=520,height=720');
+    if (!popup) {
+      window.open(url, '_blank');
+    }
   });
   panel.querySelector('#tc-vault')?.addEventListener('click', () => {
     window.open(`${webBaseUrl()}/dashboard`, '_blank');

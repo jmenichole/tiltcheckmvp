@@ -1664,55 +1664,9 @@ body.degen-background > * {
   color: #b4c0cd;
 }
 
-.landing-session-mock__shell {
-  display: grid;
-  gap: 1.25rem;
-  max-width: 40rem;
-  margin: 0 auto;
-}
-
-.landing-session-mock__heading {
-  text-align: center;
-}
-
-.landing-session-mock__title {
-  margin: 0.5rem 0 0;
-  font-size: clamp(1.2rem, 1rem + 0.7vw, 1.55rem);
-  font-weight: 760;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: #f5fbff;
-}
-
-.landing-visual-placeholder {
-  width: 100%;
-}
-
-.landing-visual-placeholder__frame {
-  padding: 1px;
-  border: 1px solid rgba(58, 73, 98, 0.85);
-  border-radius: 1.5rem;
-  background: linear-gradient(180deg, rgba(12, 16, 22, 0.95) 0%, rgba(7, 10, 14, 0.92) 100%);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
-}
-
 .landing-post-steps__actions {
   justify-content: center;
   margin-top: 0.25rem;
-}
-
-.landing-extension-mock__chip {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid rgba(23, 195, 178, 0.28);
-  border-radius: 999px;
-  font-family: var(--font-geist-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-primary);
 }
 
 .hero-signal-card--alert {
@@ -4272,8 +4226,7 @@ body.degen-background > * {
   gap: 1rem;
 }
 
-.dashboard-status-panel,
-.dashboard-stats-panel {
+.dashboard-status-panel {
   display: grid;
   gap: 0.75rem;
 }
@@ -4324,11 +4277,6 @@ body.degen-background > * {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.25rem;
-}
-
-.dashboard-stats-panel__hint {
-  font-size: 0.85rem;
-  color: #8a97a8;
 }
 
 @media (max-width: 480px) {

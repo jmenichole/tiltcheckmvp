@@ -1,5 +1,4 @@
 import LandingHeroActions from '@/components/LandingHeroActions';
-import LandingSessionMock from '@/components/LandingSessionMock';
 
 const coreJobs = [
   {
@@ -64,8 +63,6 @@ export default function LandingMarketingHome() {
           </div>
         </div>
       </section>
-
-      <LandingSessionMock />
     </main>
   );
 }

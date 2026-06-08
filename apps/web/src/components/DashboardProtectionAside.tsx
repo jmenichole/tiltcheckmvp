@@ -79,19 +79,6 @@ export default function DashboardProtectionAside({
           </Link>
         </div>
       </div>
-
-      <div className="public-page-card dashboard-stats-panel">
-        <span className="brand-eyebrow">Session patterns</span>
-        <h3 className="public-page-card__title">Lockout history</h3>
-        <p className="public-page-card__copy">
-          Tilt and game-block events still live in the extension on each tab. A synced session log
-          (lockouts per week, top triggers, cap tweaks) is planned — your habit loop starts with
-          adjusting the lockout time after each pull-out.
-        </p>
-        <p className="public-page-card__copy dashboard-stats-panel__hint">
-          On casino tabs: expand the TC chip for live clicks/5s and latest tilt indicator.
-        </p>
-      </div>
     </aside>
   );
 }

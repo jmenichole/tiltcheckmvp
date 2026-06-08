@@ -30,8 +30,10 @@ export default function Home() {
             FUCK THAT.
           </h1>
           <div className="landing-hero-kicker-block">
-            <p className="landing-hero-kicker">The math isn&apos;t rigged. Your dopamine is.</p>
-            <p className="landing-hero-kicker landing-hero-kicker--second">The house banks on your tilt.</p>
+            <span className="landing-hero-kicker__line">The math isn&apos;t rigged. Your dopamine is.</span>
+            <span className="landing-hero-kicker__line landing-hero-kicker__line--second">
+              The house banks on your tilt.
+            </span>
           </div>
           <p className="landing-hero-subtitle landing-hero-subtitle--centered landing-hero-subtitle--lede">
             TiltCheck is the read-only friction layer that tracks session drift in real time and pulls

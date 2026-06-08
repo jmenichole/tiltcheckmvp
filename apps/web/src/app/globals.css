@@ -1077,6 +1077,7 @@ body.degen-background {
   background-repeat: no-repeat;
   background-position: left top;
   background-attachment: scroll; /* fixed breaks on iOS Safari */
+  background-blend-mode: darken;
   min-height: 100vh;
   position: relative;
   color: var(--text-primary);
@@ -1281,41 +1282,33 @@ body.degen-background > * {
 }
 
 .landing-hero-kicker-block {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
   width: min(100%, 40rem);
   margin: 1.1rem auto 0;
   text-align: center;
 }
 
-.landing-hero-kicker {
-  margin: 0;
-  font-size: clamp(1.05rem, 2.2vw, 1.55rem);
+.landing-hero-kicker__line {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  font-size: clamp(0.82rem, 2.35vw, 1.55rem);
   font-weight: 750;
   line-height: 1.25;
   letter-spacing: -0.03em;
   color: #f6fbff;
-  text-wrap: nowrap;
   white-space: nowrap;
   text-shadow:
     0 2px 18px rgba(0, 0, 0, 0.95),
     0 0 36px rgba(0, 0, 0, 0.65);
 }
 
-.landing-hero-kicker--second {
-  font-size: clamp(1rem, 2vw, 1.4rem);
+.landing-hero-kicker__line--second {
   color: #d8fff9;
-  text-wrap: nowrap;
-  white-space: nowrap;
-}
-
-@media (max-width: 520px) {
-  .landing-hero-kicker,
-  .landing-hero-kicker--second {
-    white-space: normal;
-    text-wrap: pretty;
-    font-size: clamp(0.95rem, 3.8vw, 1.2rem);
-  }
+  font-size: clamp(0.78rem, 2.1vw, 1.4rem);
 }
 
 .landing-hero-subtitle--centered {

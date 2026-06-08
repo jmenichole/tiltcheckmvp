@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
+import DashboardProtectionAside from '@/components/DashboardProtectionAside';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
 
@@ -13,24 +14,6 @@ interface VaultRule {
   config: { durationMinutes?: number };
 }
 
-const VAULT_STEPS = [
-  {
-    step: '01',
-    title: 'Block problem games',
-    description: 'In Settings: exclude games by preset, keywords, or pasted URL. Block or warn per game.',
-  },
-  {
-    step: '02',
-    title: 'Set your session cap',
-    description: 'How long Touch Grass locks the screen — for tilt critical and blocked-game lockouts.',
-  },
-  {
-    step: '03',
-    title: 'Play with the extension on',
-    description: 'Read-only watcher on casino tabs. Tilt sensitivity controls how early warnings fire.',
-  },
-] as const;
-
 export default function DashboardPage() {
   const [user, setUser] = useState<{ username: string; avatarUrl: string | null } | null>(null);
   const [vaultRules, setVaultRules] = useState<VaultRule[]>([]);
@@ -40,6 +23,7 @@ export default function DashboardPage() {
   const [showWizard, setShowWizard] = useState(false);
   const [gameExclusions, setGameExclusions] = useState<GameExclusionEntry[]>([]);
   const [riskProfile, setRiskProfile] = useState<'conservative' | 'moderate' | 'degen'>('moderate');
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const sessionCapRule = vaultRules.find((r) => r.ruleType === 'session_cap');
@@ -58,6 +42,7 @@ export default function DashboardPage() {
         if (s) {
           setGameExclusions(s.gameExclusions ?? []);
           setRiskProfile(s.riskProfile ?? 'moderate');
+          setOnboardingComplete(Boolean(s.onboardingCompletedAt));
           setShowWizard(!s.onboardingCompletedAt);
         }
       })
@@ -128,6 +113,7 @@ export default function DashboardPage() {
               initialSessionCapMinutes={sessionCapMinutes}
               onComplete={() => {
                 setShowWizard(false);
+                setOnboardingComplete(true);
                 refreshVault();
               }}
               onSkip={() => setShowWizard(false)}
@@ -138,7 +124,7 @@ export default function DashboardPage() {
               <div className="dashboard-main">
                 <div className="public-page-section-heading">
                   <div>
-                    <span className="brand-eyebrow">Touch Grass vault</span>
+                    <span className="brand-eyebrow">Touch Grass lockout</span>
                     <h2 className="public-page-section-heading__title">Set your walk-away line</h2>
                     <p className="public-page-section-heading__copy brand-lead">
                       Session cap minutes apply to Touch Grass lockouts — tilt critical or opening a game
@@ -229,29 +215,13 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <aside className="dashboard-aside">
-                <div className="public-page-grid public-page-grid--1 dashboard-steps">
-                  {VAULT_STEPS.map((item) => (
-                    <article key={item.step} className="public-page-card">
-                      <p className="public-page-card__eyebrow">Step {item.step}</p>
-                      <h3 className="public-page-card__title">{item.title}</h3>
-                      <p className="public-page-card__copy">{item.description}</p>
-                    </article>
-                  ))}
-                </div>
-
-                <div className="public-page-cta-band">
-                  <p className="public-page-panel__eyebrow">After your first lockout</p>
-                  <h3 className="public-page-cta-band__title">
-                    Come back here. Tweak the cap. That is the habit loop.
-                  </h3>
-                  <p className="public-page-cta-band__copy">
-                    Too short and you are back on the machine before the tilt clears? Bump it. Still
-                    ragging through the timer? Go shorter next time. Set → play → get pulled out →
-                    adjust.
-                  </p>
-                </div>
-              </aside>
+              <DashboardProtectionAside
+                riskProfile={riskProfile}
+                gameExclusions={gameExclusions}
+                capMinutes={sessionCapRule?.config?.durationMinutes ?? (capSynced ? sessionCapMinutes : null)}
+                capSynced={capSynced}
+                onboardingComplete={onboardingComplete}
+              />
             </div>
 
         </div>

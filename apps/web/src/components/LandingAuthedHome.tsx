@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { GameExclusionEntry } from '@tiltcheck/shared';
+import { HABIT_LOOP_COPY, PROTECTION_STEPS } from '@/lib/protection-steps';
 import { apiFetch } from '@/lib/api';
 import LandingMarketingHome from '@/components/LandingMarketingHome';
 
@@ -19,12 +21,17 @@ export default function LandingAuthedHome() {
   const [username, setUsername] = useState('');
   const [capMinutes, setCapMinutes] = useState<number | null>(null);
   const [vaultError, setVaultError] = useState(false);
+  const [gameExclusionCount, setGameExclusionCount] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      const [meRes, vaultRes] = await Promise.all([apiFetch('/auth/me'), apiFetch('/vault')]);
+      const [meRes, vaultRes, settingsRes] = await Promise.all([
+        apiFetch('/auth/me'),
+        apiFetch('/vault'),
+        apiFetch('/user/settings'),
+      ]);
 
       if (!meRes.ok) {
         if (!cancelled) setLoadState('fallback');
@@ -47,6 +54,14 @@ export default function LandingAuthedHome() {
       );
       if (!cancelled && cap?.config?.durationMinutes) {
         setCapMinutes(cap.config.durationMinutes);
+      }
+
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        const exclusions = settingsData.settings?.gameExclusions;
+        if (!cancelled && Array.isArray(exclusions)) {
+          setGameExclusionCount(exclusions.length);
+        }
       }
     }
 
@@ -96,28 +111,57 @@ export default function LandingAuthedHome() {
           {loadState === 'authed' ? (
             <div className="landing-authed-home__status public-page-grid public-page-grid--2">
               <article className="public-page-card">
-                <p className="public-page-card__eyebrow">Vault</p>
+                <p className="public-page-card__eyebrow">Lockout</p>
                 <h3 className="public-page-card__title">
-                  {vaultError ? 'Status unavailable' : capArmed ? `Session cap: ${capMinutes} min` : 'No exit line set'}
+                  {vaultError ? 'Status unavailable' : capArmed ? `${capMinutes} min armed` : 'No exit line set'}
                 </h3>
                 <p className="public-page-card__copy">
                   {vaultError ? (
-                    <Link href="/dashboard">Open dashboard to check vault</Link>
+                    <Link href="/dashboard">Open dashboard to check lockout</Link>
                   ) : capArmed ? (
-                    'Touch Grass lockout is configured.'
+                    'Touch Grass tab lock is configured.'
                   ) : (
-                    <Link href="/dashboard">Set your session cap on the dashboard</Link>
+                    <Link href="/dashboard">Set lockout minutes on the dashboard</Link>
                   )}
                 </p>
               </article>
               <article className="public-page-card">
-                <p className="public-page-card__eyebrow">Extension</p>
-                <h3 className="public-page-card__title">Read-only watcher</h3>
+                <p className="public-page-card__eyebrow">Game blocks</p>
+                <h3 className="public-page-card__title">
+                  {gameExclusionCount === null
+                    ? 'Loading…'
+                    : gameExclusionCount > 0
+                      ? `${gameExclusionCount} excluded`
+                      : 'None yet'}
+                </h3>
                 <p className="public-page-card__copy">
-                  <Link href="/extension">Reload after login so vault rules sync</Link>
+                  <Link href="/settings#game-exclusion">
+                    {gameExclusionCount && gameExclusionCount > 0
+                      ? 'Manage exclusions in Settings'
+                      : 'Block problem games in Settings'}
+                  </Link>
                 </p>
               </article>
             </div>
+          ) : null}
+
+          {loadState === 'authed' ? (
+            <section className="landing-authed-home__steps public-page-section">
+              <div className="public-page-grid public-page-grid--3">
+                {PROTECTION_STEPS.map((item) => (
+                  <article key={item.step} className="public-page-card">
+                    <p className="public-page-card__eyebrow">Step {item.step}</p>
+                    <h3 className="public-page-card__title">{item.title}</h3>
+                    <p className="public-page-card__copy">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="public-page-cta-band landing-authed-home__habit">
+                <p className="public-page-panel__eyebrow">{HABIT_LOOP_COPY.eyebrow}</p>
+                <h3 className="public-page-cta-band__title">{HABIT_LOOP_COPY.title}</h3>
+                <p className="public-page-cta-band__copy">{HABIT_LOOP_COPY.body}</p>
+              </div>
+            </section>
           ) : null}
 
           <p className="landing-authed-home__tertiary">

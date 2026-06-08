@@ -115,6 +115,26 @@ html {
   border-color: rgba(23, 195, 178, 0.4);
 }
 
+.nav-install-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  color: #17c3b2;
+  background: none;
+  border: 1px solid rgba(23, 195, 178, 0.2);
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.nav-install-btn:hover {
+  background: rgba(23, 195, 178, 0.08);
+  border-color: rgba(23, 195, 178, 0.4);
+}
+
 .nav-overlay {
   position: fixed;
   inset: 0;

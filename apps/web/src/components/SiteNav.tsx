@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
+import { EXTENSION_INSTALL_HREF, NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
 
 type NavUser = { username: string; avatarUrl: string | null } | null;
 
@@ -102,6 +102,22 @@ export default function SiteNav() {
         </Link>
 
         <div className="nav-topbar-right">
+          <Link
+            href={EXTENSION_INSTALL_HREF}
+            className="nav-install-btn"
+            aria-label="Install extension"
+            title="Install extension"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M12 3v10m0 0l4-4m-4 4L8 9M5 17h14"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
           {user ? (
             <Link
               href="/settings"
@@ -158,7 +174,7 @@ export default function SiteNav() {
               <div className="nav-collapse-group">
                 <p className="nav-collapse-group__title">Quick links</p>
                 {filterQuickLinks(NAV_QUICK_LINKS, Boolean(user)).map((link) => (
-                  <NavMenuLink key={link.label} link={link} onNavigate={closeMenu} />
+                  <NavMenuLink key={link.href} link={link} onNavigate={closeMenu} />
                 ))}
               </div>
 
@@ -166,7 +182,7 @@ export default function SiteNav() {
                 <div key={group.title} className="nav-collapse-group">
                   <p className="nav-collapse-group__title">{group.title}</p>
                   {group.links.map((link) => (
-                    <NavMenuLink key={`${group.title}-${link.label}`} link={link} onNavigate={closeMenu} />
+                    <NavMenuLink key={link.href} link={link} onNavigate={closeMenu} />
                   ))}
                 </div>
               ))}

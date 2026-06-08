@@ -2,10 +2,12 @@ export type NavLink = { href: string; label: string; external?: boolean };
 
 export type NavMenuGroup = { title: string; links: NavLink[] };
 
+/** Setup page until Chrome Web Store listing is live. */
+export const EXTENSION_INSTALL_HREF = '/extension';
+
 export const NAV_QUICK_LINKS: NavLink[] = [
-  { href: '/extension', label: 'Extension' },
   { href: '/casinos', label: 'Casino Trust' },
-  { href: '/bonuses', label: "Today's Bonuses" },
+  { href: '/bonuses', label: 'Bonuses' },
   { href: '/dashboard', label: 'Dashboard' },
 ];
 
@@ -13,20 +15,10 @@ export const NAV_MENU_GROUPS: NavMenuGroup[] = [
   {
     title: 'Tools',
     links: [
-      { href: '/extension', label: 'All tools' },
-      { href: '/stake', label: 'Profit Guardrails' },
-      { href: '/tools/domain-verifier', label: 'Bet Verifier' },
-      { href: '/dashboard', label: 'RTP Drift Watch' },
-      { href: '/casinos', label: 'House Edge Scanner' },
-    ],
-  },
-  {
-    title: 'Intel',
-    links: [
-      { href: '/casinos', label: 'Casino Trust Scores' },
-      { href: '/bonuses', label: 'Daily Bonus Tracker' },
+      { href: '/stake', label: 'Stake Auto-Vault' },
+      { href: '/nuts', label: 'nuts.gg Auto-Vault' },
+      { href: '/tools/domain-verifier', label: 'Promo Link Checker' },
       { href: '/tools/scan-scams', label: 'Scam Registry' },
-      { href: '/extension', label: 'Browser Extension' },
     ],
   },
   {

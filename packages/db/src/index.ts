@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import type { ApiUser, UserSettings, VaultRule } from '@tiltcheck/shared';
+import type { ApiUser, GameExclusionEntry, UserSettings, VaultRule } from '@tiltcheck/shared';
 
 export type { ApiUser, UserSettings, VaultRule };
 
@@ -72,52 +72,87 @@ export async function getUserSettings(userId: string): Promise<UserSettings | nu
       riskProfile: 'moderate',
       notificationsEnabled: true,
       demoMode: false,
+      gameExclusions: [],
+      onboardingCompletedAt: null,
       updatedAt: new Date().toISOString(),
     };
   }
   const { data } = await db.from('user_settings').select('*').eq('user_id', userId).maybeSingle();
   if (!data) return null;
+  return mapUserSettingsRow(data);
+}
+
+function mapUserSettingsRow(data: Record<string, unknown>): UserSettings {
   return {
-    userId: data.user_id,
-    riskProfile: data.risk_profile,
-    notificationsEnabled: data.notifications_enabled,
-    demoMode: data.demo_mode,
-    updatedAt: data.updated_at,
+    userId: String(data.user_id),
+    riskProfile: data.risk_profile as UserSettings['riskProfile'],
+    notificationsEnabled: Boolean(data.notifications_enabled),
+    demoMode: Boolean(data.demo_mode),
+    gameExclusions: parseGameExclusions(data.game_exclusions),
+    onboardingCompletedAt: data.onboarding_completed_at
+      ? String(data.onboarding_completed_at)
+      : null,
+    updatedAt: String(data.updated_at),
   };
 }
 
-export async function upsertUserSettings(
-  userId: string,
-  patch: Partial<Pick<UserSettings, 'riskProfile' | 'notificationsEnabled' | 'demoMode'>>,
-): Promise<UserSettings> {
+function parseGameExclusions(raw: unknown): GameExclusionEntry[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((entry): entry is GameExclusionEntry => {
+    return (
+      entry &&
+      typeof entry === 'object' &&
+      typeof (entry as GameExclusionEntry).id === 'string' &&
+      typeof (entry as GameExclusionEntry).label === 'string' &&
+      Array.isArray((entry as GameExclusionEntry).matchPatterns)
+    );
+  });
+}
+
+export type UserSettingsPatch = Partial<
+  Pick<
+    UserSettings,
+    'riskProfile' | 'notificationsEnabled' | 'demoMode' | 'gameExclusions' | 'onboardingCompletedAt'
+  >
+>;
+
+export async function upsertUserSettings(userId: string, patch: UserSettingsPatch): Promise<UserSettings> {
   const db = getSupabaseAdmin();
-  const defaults = {
-    risk_profile: patch.riskProfile ?? 'moderate',
-    notifications_enabled: patch.notificationsEnabled ?? true,
-    demo_mode: patch.demoMode ?? false,
+  const existing = await getUserSettings(userId);
+  const merged: UserSettings = {
+    userId,
+    riskProfile: patch.riskProfile ?? existing?.riskProfile ?? 'moderate',
+    notificationsEnabled: patch.notificationsEnabled ?? existing?.notificationsEnabled ?? true,
+    demoMode: patch.demoMode ?? existing?.demoMode ?? false,
+    gameExclusions: patch.gameExclusions ?? existing?.gameExclusions ?? [],
+    onboardingCompletedAt:
+      patch.onboardingCompletedAt !== undefined
+        ? patch.onboardingCompletedAt
+        : (existing?.onboardingCompletedAt ?? null),
+    updatedAt: new Date().toISOString(),
   };
+
   if (!db) {
-    return {
-      userId,
-      riskProfile: defaults.risk_profile,
-      notificationsEnabled: defaults.notifications_enabled,
-      demoMode: defaults.demo_mode,
-      updatedAt: new Date().toISOString(),
-    };
+    return merged;
   }
+
+  const row = {
+    user_id: userId,
+    risk_profile: merged.riskProfile,
+    notifications_enabled: merged.notificationsEnabled,
+    demo_mode: merged.demoMode,
+    game_exclusions: merged.gameExclusions,
+    onboarding_completed_at: merged.onboardingCompletedAt,
+    updated_at: merged.updatedAt,
+  };
+
   const { data, error } = await db
     .from('user_settings')
-    .upsert({ user_id: userId, ...defaults }, { onConflict: 'user_id' })
+    .upsert(row, { onConflict: 'user_id' })
     .select('*')
     .single();
   if (error || !data) throw error ?? new Error('Failed to upsert settings');
-  return {
-    userId: data.user_id,
-    riskProfile: data.risk_profile,
-    notificationsEnabled: data.notifications_enabled,
-    demoMode: data.demo_mode,
-    updatedAt: data.updated_at,
-  };
+  return mapUserSettingsRow(data);
 }
 
 const memoryVaultRules = new Map<string, VaultRule[]>();

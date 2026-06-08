@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import type { GameExclusionEntry } from '@tiltcheck/shared';
+import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
 
 interface VaultRule {
@@ -35,6 +37,10 @@ export default function DashboardPage() {
   const [sessionCapMinutes, setSessionCapMinutes] = useState(5);
   const [vaultStatus, setVaultStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [vaultError, setVaultError] = useState('');
+  const [showWizard, setShowWizard] = useState(false);
+  const [gameExclusions, setGameExclusions] = useState<GameExclusionEntry[]>([]);
+  const [riskProfile, setRiskProfile] = useState<'conservative' | 'moderate' | 'degen'>('moderate');
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const sessionCapRule = vaultRules.find((r) => r.ruleType === 'session_cap');
   const capSynced = Boolean(sessionCapRule?.enabled && sessionCapRule.config?.durationMinutes);
@@ -44,6 +50,18 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((data) => setUser(data.user));
     refreshVault();
+    apiFetch('/user/settings')
+      .then(async (r) => {
+        if (!r.ok) return;
+        const data = await r.json();
+        const s = data.settings;
+        if (s) {
+          setGameExclusions(s.gameExclusions ?? []);
+          setRiskProfile(s.riskProfile ?? 'moderate');
+          setShowWizard(!s.onboardingCompletedAt);
+        }
+      })
+      .finally(() => setSettingsLoaded(true));
   }, []);
 
   async function refreshVault() {
@@ -103,6 +121,19 @@ export default function DashboardPage() {
 
       <section className="public-page-section px-4">
         <div className="landing-shell">
+          {settingsLoaded && showWizard ? (
+            <OnboardingWizard
+              initialGameExclusions={gameExclusions}
+              initialRiskProfile={riskProfile}
+              initialSessionCapMinutes={sessionCapMinutes}
+              onComplete={() => {
+                setShowWizard(false);
+                refreshVault();
+              }}
+              onSkip={() => setShowWizard(false)}
+            />
+          ) : null}
+
           <div className="dashboard-layout dashboard-layout--vault">
               <div className="dashboard-main">
                 <div className="public-page-section-heading">

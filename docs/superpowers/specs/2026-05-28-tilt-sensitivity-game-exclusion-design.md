@@ -194,6 +194,33 @@ Validate:
 - Link "Manage games" → `/settings#game-exclusion`
 - If on excluded game: show status (warn countdown / blocked)
 
+### 3.5 Extension panel UX (Phase C — user feedback 2026-05-28)
+
+**Problem:** Fixed bottom-right widget is not movable and blocks casino UI.
+
+**Default:** Collapsed **FAB chip** (TC logo, ~40px). Draggable; position persisted in `chrome.storage.local` (`tc_panel_position`).
+
+**Expanded floating panel** (user click):
+
+| Section | Content |
+|---------|---------|
+| Account | Username or Connect Discord |
+| Protection | Session cap armed (Y/N + minutes), demo mode badge |
+| Game match | Current URL/title vs exclusions — blocked / warn / clear |
+| Live stats | Clicks in 5s window, latest tilt indicator (type + severity) |
+| Actions | Minimize, Open Settings, Open Dashboard, Sync vault |
+
+**Pin open (optional v1):** Chrome **Side Panel** API — toolbar icon opens side panel with same content; stays out of page layout. User chooses FAB vs side panel in panel menu (store `tc_panel_mode`: `fab` | `sidepanel`).
+
+**Interaction rules:**
+
+- Drag handle on chip and panel header
+- Double-click chip toggles expand/collapse
+- z-index below Touch Grass lockout overlay
+- excluded hosts (discord, localhost dev) unchanged
+
+---
+
 ### 3.4 Web surfaces
 
 | Surface | Content |

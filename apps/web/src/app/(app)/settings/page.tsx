@@ -3,13 +3,44 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import type { GameExclusionEntry } from '@tiltcheck/shared';
+import GameExclusionEditor from '@/components/GameExclusionEditor';
 import { apiFetch } from '@/lib/api';
 
+type RiskProfile = 'conservative' | 'moderate' | 'degen';
+
 type SettingsState = {
-  riskProfile: string;
+  riskProfile: RiskProfile;
   notificationsEnabled: boolean;
   demoMode: boolean;
+  gameExclusions: GameExclusionEntry[];
 };
+
+const SENSITIVITY_PROFILES: {
+  id: RiskProfile;
+  title: string;
+  copy: string;
+  trigger: string;
+}[] = [
+  {
+    id: 'conservative',
+    title: 'Conservative — early brakes',
+    copy: 'Fires warnings sooner. Touch Grass kicks in when click-speed or loss streaks look like autopilot, not just full send. Best if you want help before the hole gets deep.',
+    trigger: 'Touch Grass when: 10+ clicks in 5 seconds or 4+ losses in a row',
+  },
+  {
+    id: 'moderate',
+    title: 'Moderate — balanced (default)',
+    copy: 'Standard thresholds. Ignores normal variance; reacts when pacing clearly shifts. Good default for most sessions.',
+    trigger: 'Touch Grass when: 14+ clicks in 5 seconds or 5+ losses in a row',
+  },
+  {
+    id: 'degen',
+    title: 'Degen — let me cook (until critical)',
+    copy: 'High tolerance. Only locks you out on obvious tilt patterns — rapid-fire clicks or a brutal loss run. You feel the warning late; enforcement is the last resort.',
+    trigger: 'Touch Grass when: 20+ clicks in 5 seconds or 7+ losses in a row',
+  },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -20,6 +51,7 @@ export default function SettingsPage() {
     riskProfile: 'moderate',
     notificationsEnabled: true,
     demoMode: false,
+    gameExclusions: [],
   });
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,7 +68,13 @@ export default function SettingsPage() {
         if (settingsRes.ok) {
           const settingsData = await settingsRes.json();
           if (settingsData.settings) {
-            setSettings(settingsData.settings);
+            const s = settingsData.settings;
+            setSettings({
+              riskProfile: s.riskProfile ?? 'moderate',
+              notificationsEnabled: s.notificationsEnabled ?? true,
+              demoMode: s.demoMode ?? false,
+              gameExclusions: Array.isArray(s.gameExclusions) ? s.gameExclusions : [],
+            });
           }
         }
       })
@@ -116,18 +154,39 @@ export default function SettingsPage() {
             <span className="brand-eyebrow">Preferences</span>
             <h2 className="public-page-card__title">TiltCheck behavior</h2>
 
-            <div className="dashboard-field">
-              <label htmlFor="risk-profile">Tilt sensitivity</label>
-              <select
-                id="risk-profile"
-                value={settings.riskProfile}
-                onChange={(e) => setSettings((s) => ({ ...s, riskProfile: e.target.value }))}
-              >
-                <option value="conservative">Conservative — early warnings</option>
-                <option value="moderate">Moderate — balanced</option>
-                <option value="degen">Degen — let me cook until critical</option>
-              </select>
-            </div>
+            <fieldset className="sensitivity-fieldset">
+              <legend className="dashboard-field-label">Tilt sensitivity</legend>
+              <div className="sensitivity-cards" role="radiogroup" aria-label="Tilt sensitivity">
+                {SENSITIVITY_PROFILES.map((profile) => {
+                  const selected = settings.riskProfile === profile.id;
+                  return (
+                    <label
+                      key={profile.id}
+                      className={`sensitivity-card${selected ? ' sensitivity-card--selected' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="risk-profile"
+                        value={profile.id}
+                        checked={selected}
+                        onChange={() => setSettings((s) => ({ ...s, riskProfile: profile.id }))}
+                      />
+                      <span className="sensitivity-card__title">{profile.title}</span>
+                      <span className="sensitivity-card__copy">{profile.copy}</span>
+                      <span className="sensitivity-card__trigger">{profile.trigger}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+
+            <section id="game-exclusion" className="settings-game-exclusion">
+              <h3 className="public-page-card__title settings-section-title">Game self-exclusion</h3>
+              <GameExclusionEditor
+                value={settings.gameExclusions}
+                onChange={(gameExclusions) => setSettings((s) => ({ ...s, gameExclusions }))}
+              />
+            </section>
 
             <label className="dashboard-checkbox">
               <input

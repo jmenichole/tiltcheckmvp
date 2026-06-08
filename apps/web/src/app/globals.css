@@ -7,6 +7,10 @@ html, body {
   max-width: 100%;
 }
 
+html {
+  background-color: #030405;
+}
+
 /* Hide status text in the compact mobile header */
 .nav-topbar .status-text {
   display: none;
@@ -26,10 +30,10 @@ html, body {
   padding: 0.75rem 1.25rem;
   min-height: 56px;
   box-sizing: border-box;
-  background: rgba(10, 12, 16, 0.85);
-  border-bottom: 1px solid transparent;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(3, 4, 5, 0.97);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   position: sticky;
   top: 0;
   z-index: 200;
@@ -38,9 +42,9 @@ html, body {
 }
 
 .nav-topbar--scrolled {
-  background: rgba(6, 8, 11, 0.97);
-  border-bottom-color: rgba(23, 195, 178, 0.12);
-  box-shadow: 0 1px 24px rgba(0, 0, 0, 0.5), 0 0 1px rgba(23, 195, 178, 0.08);
+  background: rgba(2, 3, 4, 0.99);
+  border-bottom-color: rgba(23, 195, 178, 0.1);
+  box-shadow: 0 1px 24px rgba(0, 0, 0, 0.55), 0 0 1px rgba(23, 195, 178, 0.06);
 }
 
 .nav-topbar-right {
@@ -1073,14 +1077,19 @@ body.degen-background {
   color: var(--text-primary);
 }
 
-/* Dark overlay — glitter stays subtle; copy stays high-contrast */
+/* Dark overlay — heavier at top so nav/hero don't pick up gray from the glitter wash */
 body.degen-background::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(2, 3, 5, 0.95) 0%, rgba(2, 3, 5, 0.95) 100%),
-    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.02), transparent 65%);
+    linear-gradient(
+      180deg,
+      rgba(1, 2, 3, 0.98) 0%,
+      rgba(2, 3, 5, 0.96) 18%,
+      rgba(2, 3, 5, 0.95) 100%
+    ),
+    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.015), transparent 65%);
   pointer-events: none;
   z-index: 0;
 }
@@ -1256,7 +1265,8 @@ body.degen-background > * {
   padding: clamp(2.5rem, 6vw, 5rem) 1.5rem clamp(1.5rem, 3vw, 2.5rem);
   text-align: center;
   position: relative;
-  border-bottom: 1px solid #283347;
+  border-bottom: none;
+  background: transparent;
 }
 
 /* Centered hero variant for the stripped landing page */

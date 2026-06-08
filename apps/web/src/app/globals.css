@@ -1062,23 +1062,25 @@ body::before {
 
 /* Old Theme Styles */
 body.degen-background {
-  background-color: #07080A !important;
+  background-color: #07080a !important;
   background-image: url('/assets/backgroundglitter.png');
   background-size: cover;
   background-repeat: no-repeat;
-  background-position: center;
+  background-position: left top;
   background-attachment: scroll; /* fixed breaks on iOS Safari */
   min-height: 100vh;
   position: relative;
   color: var(--text-primary);
 }
 
-/* Dark overlay across the entire glitter background */
+/* Tint overlay — keeps text readable while letting the glitter show through */
 body.degen-background::before {
   content: '';
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 10, 0.88);
+  background:
+    linear-gradient(180deg, rgba(5, 7, 10, 0.52) 0%, rgba(5, 7, 10, 0.78) 100%),
+    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(23, 195, 178, 0.06), transparent 70%);
   pointer-events: none;
   z-index: 0;
 }

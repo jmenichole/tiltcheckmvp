@@ -1,6 +1,5 @@
-import Link from 'next/link';
-import LandingExtensionMock from '@/components/LandingExtensionMock';
 import LandingHeroActions from '@/components/LandingHeroActions';
+import LandingPostStepsCta from '@/components/LandingPostStepsCta';
 import LandingZeroTrustStrip from '@/components/LandingZeroTrustStrip';
 
 const coreJobs = [
@@ -72,43 +71,7 @@ export default function Home() {
         </div>
       </section>
 
-      <LandingExtensionMock />
-
-      <section className="public-page-section px-4">
-        <div className="landing-shell">
-          <div className="public-page-cta-band">
-            <p className="public-page-panel__eyebrow">Ready to kill the auto-pilot?</p>
-            <p className="public-page-cta-band__copy">
-              Install the extension and let TiltCheck watch your next session — or verify your casino&apos;s
-              receipts first.
-            </p>
-            <div className="public-page-cta-band__actions public-page-cta-band__actions--desktop">
-              <Link href="/extension" className="btn btn-primary">
-                INSTALL THE EXTENSION
-              </Link>
-              <Link href="/casinos" className="btn btn-ghost">
-                CHECK CASINO TRUST
-              </Link>
-            </div>
-            <div className="public-page-cta-band__actions public-page-cta-band__actions--mobile">
-              <a
-                href="https://discord.gg/gdBsEJfCar"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary btn-discord"
-              >
-                JOIN DISCORD
-              </a>
-              <Link href="/casinos" className="btn btn-ghost">
-                CHECK CASINO TRUST
-              </Link>
-              <Link href="/extension" className="hero-actions__desktop-link">
-                Get the desktop install link
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
+      <LandingPostStepsCta />
 
       <section className="public-page-section px-4" style={{ paddingBottom: '2rem' }}>
         <div className="landing-shell" style={{ textAlign: 'center' }}>

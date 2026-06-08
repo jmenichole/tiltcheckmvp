@@ -1,9 +1,13 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { apiBaseUrl } from '@/lib/api';
 
 export default function LoginPage() {
-  const loginUrl = `${apiBaseUrl()}/auth/discord/login?source=web&redirect=/dashboard`;
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get('redirect');
+  const safeRedirect = redirect?.startsWith('/') ? redirect : '/dashboard';
+  const loginUrl = `${apiBaseUrl()}/auth/discord/login?source=web&redirect=${encodeURIComponent(safeRedirect)}`;
 
   return (
     <main className="public-page text-white auth-page">

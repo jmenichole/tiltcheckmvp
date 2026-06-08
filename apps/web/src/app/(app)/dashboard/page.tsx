@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 
-type Tab = 'profile' | 'vault';
-
 interface VaultRule {
   id: string;
   ruleType: string;
@@ -32,16 +30,9 @@ const VAULT_STEPS = [
 ] as const;
 
 export default function DashboardPage() {
-  const [tab, setTab] = useState<Tab>('vault');
   const [user, setUser] = useState<{ username: string; avatarUrl: string | null } | null>(null);
-  const [settings, setSettings] = useState({
-    riskProfile: 'moderate',
-    notificationsEnabled: true,
-    demoMode: false,
-  });
   const [vaultRules, setVaultRules] = useState<VaultRule[]>([]);
   const [sessionCapMinutes, setSessionCapMinutes] = useState(5);
-  const [profileStatus, setProfileStatus] = useState('');
   const [vaultStatus, setVaultStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [vaultError, setVaultError] = useState('');
 
@@ -52,9 +43,6 @@ export default function DashboardPage() {
     apiFetch('/auth/me')
       .then((r) => r.json())
       .then((data) => setUser(data.user));
-    apiFetch('/user/settings')
-      .then((r) => r.json())
-      .then((data) => data.settings && setSettings(data.settings));
     refreshVault();
   }, []);
 
@@ -67,15 +55,6 @@ export default function DashboardPage() {
     if (cap?.config?.durationMinutes) {
       setSessionCapMinutes(cap.config.durationMinutes);
     }
-  }
-
-  async function saveSettings() {
-    setProfileStatus('Saving...');
-    const res = await apiFetch('/user/settings', {
-      method: 'PATCH',
-      body: JSON.stringify(settings),
-    });
-    setProfileStatus(res.ok ? 'Locked in.' : 'Save failed — try again.');
   }
 
   async function saveSessionCap() {
@@ -112,31 +91,19 @@ export default function DashboardPage() {
           </p>
 
           <div className="dashboard-tab-bar" role="tablist" aria-label="Dashboard sections">
-            {(
-              [
-                ['vault', 'Vault'],
-                ['profile', 'Profile'],
-              ] as const
-            ).map(([t, label]) => (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === t}
-                className={`dashboard-tab${tab === t ? ' dashboard-tab--active' : ''}`}
-                onClick={() => setTab(t)}
-              >
-                {label}
-              </button>
-            ))}
+            <button type="button" role="tab" aria-selected className="dashboard-tab dashboard-tab--active">
+              Vault
+            </button>
+            <Link href="/settings" className="dashboard-tab dashboard-tab--link">
+              Profile settings
+            </Link>
           </div>
         </div>
       </section>
 
       <section className="public-page-section px-4">
         <div className="landing-shell">
-          {tab === 'vault' && (
-            <div className="dashboard-layout dashboard-layout--vault">
+          <div className="dashboard-layout dashboard-layout--vault">
               <div className="dashboard-main">
                 <div className="public-page-section-heading">
                   <div>
@@ -255,59 +222,7 @@ export default function DashboardPage() {
                 </div>
               </aside>
             </div>
-          )}
 
-          {tab === 'profile' && (
-            <div className="dashboard-layout dashboard-layout--profile">
-              <div className="public-page-section-heading">
-                <div>
-                  <span className="brand-eyebrow">Account</span>
-                  <h2 className="public-page-section-heading__title">Profile</h2>
-                  <p className="public-page-section-heading__copy brand-lead">
-                    Discord identity and how hard we nudge you. Functional stuff — nothing clinical.
-                  </p>
-                </div>
-              </div>
-
-              <div className="public-page-card dashboard-profile-card">
-                <div className="public-page-meta-strip">
-                  <span>Discord: {user?.username ?? 'loading...'}</span>
-                  <span className="public-page-meta-strip__separator">|</span>
-                  <span>Avatar: {user?.avatarUrl ? 'synced' : 'none'}</span>
-                </div>
-
-                <div className="dashboard-field">
-                  <label htmlFor="risk-profile">Tilt sensitivity</label>
-                  <select
-                    id="risk-profile"
-                    value={settings.riskProfile}
-                    onChange={(e) => setSettings((s) => ({ ...s, riskProfile: e.target.value }))}
-                  >
-                    <option value="conservative">Conservative — early warnings</option>
-                    <option value="moderate">Moderate — balanced</option>
-                    <option value="degen">Degen — let me cook until critical</option>
-                  </select>
-                </div>
-
-                <label className="dashboard-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={settings.notificationsEnabled}
-                    onChange={(e) =>
-                      setSettings((s) => ({ ...s, notificationsEnabled: e.target.checked }))
-                    }
-                  />
-                  Notify me when tilt spikes
-                </label>
-
-                <button type="button" className="btn btn-primary btn-sm" onClick={saveSettings}>
-                  Save profile
-                </button>
-
-                {profileStatus ? <p className="dashboard-profile-status">{profileStatus}</p> : null}
-              </div>
-            </div>
-          )}
         </div>
       </section>
     </main>

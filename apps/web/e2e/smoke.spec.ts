@@ -21,7 +21,8 @@ test.describe('smoke', () => {
 
   test('home page loads', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('link', { name: /casinos/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /house always wins/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /install the extension/i }).first()).toBeVisible();
   });
 
   test('casinos directory loads', async ({ page }) => {

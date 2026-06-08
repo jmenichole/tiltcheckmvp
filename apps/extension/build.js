@@ -32,6 +32,9 @@ async function build() {
     target: 'chrome100',
     minify: true,
     define,
+    alias: {
+      '@tiltcheck/shared': path.join(__dirname, '../../packages/shared/src/index.ts'),
+    },
   });
 
   await esbuild.build({

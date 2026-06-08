@@ -11,7 +11,15 @@ export default defineConfig({
     baseURL: webUrl,
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        ...(process.env.CI ? {} : { channel: 'chrome' }),
+      },
+    },
+  ],
   webServer: process.env.CI
     ? [
         {

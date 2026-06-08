@@ -12,11 +12,11 @@
  *   3. Copy .env.example → .env and fill in CRAWLER_EMAIL + CRAWLER_APP_PASSWORD
  *
  * USAGE:
- *   npx tsx scripts/email-crawler.ts              # process new emails
+ *   npx tsx scripts/email-crawler.ts              # process new emails (deletes after successful ingest)
  *   npx tsx scripts/email-crawler.ts --all        # reprocess all (ignores seen log)
- *   npx tsx scripts/email-crawler.ts --dry-run    # parse only, don't call API
+ *   npx tsx scripts/email-crawler.ts --dry-run    # parse only, don't call API or delete
  *   npx tsx scripts/email-crawler.ts --limit 50   # cap at 50 emails per run
- *   npx tsx scripts/email-crawler.ts --delete-processed # delete emails after successful ingest
+ *   npx tsx scripts/email-crawler.ts --keep-processed # leave ingested emails in the inbox
  *   npx tsx scripts/email-crawler.ts --digest          # bonus digest + JSON in scripts/logs/
  *   npx tsx scripts/email-crawler.ts --report          # alias for --digest
  *
@@ -54,13 +54,16 @@ const APP_PASSWORD = process.env.CRAWLER_APP_PASSWORD;
 const FLAGS = {
   all: process.argv.includes('--all'),
   dryRun: process.argv.includes('--dry-run'),
-  deleteProcessed: process.argv.includes('--delete-processed'),
+  keepProcessed: process.argv.includes('--keep-processed'),
   digest: process.argv.includes('--digest') || process.argv.includes('--report'),
   limit: (() => {
     const idx = process.argv.indexOf('--limit');
     return idx !== -1 ? parseInt(process.argv[idx + 1], 10) || 100 : 200;
   })(),
 };
+
+/** Delete from inbox after successful ingest unless opted out or dry-run. */
+const deleteProcessed = !FLAGS.keepProcessed && !FLAGS.dryRun;
 
 const DIGEST_TOP_N = (() => {
   const raw = process.env.CRAWLER_DIGEST_TOP_N?.trim();
@@ -399,7 +402,7 @@ async function run(): Promise<void> {
   }
 
   console.log(`\nTiltCheck Casino Email Crawler`);
-  console.log(`Mode: ${FLAGS.dryRun ? 'DRY RUN' : 'LIVE'} | Limit: ${FLAGS.limit} | Reset: ${FLAGS.all} | Delete processed: ${FLAGS.deleteProcessed} | Digest: ${FLAGS.digest ? 'full' : 'compact'}`);
+  console.log(`Mode: ${FLAGS.dryRun ? 'DRY RUN' : 'LIVE'} | Limit: ${FLAGS.limit} | Reset: ${FLAGS.all} | Delete processed: ${deleteProcessed} | Digest: ${FLAGS.digest ? 'full' : 'compact'}`);
   console.log(`API: ${API_URL}`);
   console.log(`Searching for emails from ${CASINO_SENDER_DOMAINS.length} known casino domains...\n`);
 
@@ -407,7 +410,7 @@ async function run(): Promise<void> {
     imap.once('ready', async () => {
       try {
         // Open inbox
-        await promisify(imap.openBox.bind(imap))('INBOX', !FLAGS.deleteProcessed);
+        await promisify(imap.openBox.bind(imap))('INBOX', !deleteProcessed);
 
         const searchDomain = (domain: string): Promise<number[]> => new Promise((res, rej) => {
           imap.search([['FROM', domain]] as Parameters<typeof imap.search>[0], (err, results) => {
@@ -464,7 +467,7 @@ async function run(): Promise<void> {
               if (result.intel) {
                 digestIntel.push(result.intel);
               }
-              if (FLAGS.deleteProcessed) {
+              if (deleteProcessed) {
                 await deleteMessage(imap, uid);
               }
               console.log(`OK | ${result.brand ?? 'unknown brand'} | ${result.bonusCount ?? 0} bonuses | domain: ${result.riskLevel}`);

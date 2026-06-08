@@ -5,7 +5,7 @@ param(
     [int]$Limit = 500,
     [switch]$DryRun,
     [switch]$All,
-    [switch]$DeleteProcessed,
+    [switch]$KeepProcessed,
     [switch]$Digest
 )
 
@@ -87,9 +87,9 @@ $crawlerScript = Join-Path $repoRoot "scripts\email-crawler.ts"
 $args = @($crawlerScript, "--limit", $Limit)
 if ($DryRun) { $args += "--dry-run" }
 if ($All) { $args += "--all" }
-if ($DeleteProcessed) { $args += "--delete-processed" }
+if ($KeepProcessed) { $args += "--keep-processed" }
 if ($Digest) { $args += "--digest" }
-Write-Log "Running: tsx $($args -join ' ')"
+Write-Log "Running: tsx $($args -join ' ') (delete after ingest: $(-not $KeepProcessed -and -not $DryRun))"
 
 & $tsxPath @args 2>&1 | ForEach-Object {
     $line = "[$(Get-Date -Format 'HH:mm:ss')] $_"

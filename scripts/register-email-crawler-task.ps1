@@ -12,7 +12,7 @@ param(
     [string[]]$Times = @("07:00", "19:00"),
     [int]$Limit = 200,
     [switch]$DryRun,
-    [switch]$DeleteProcessed,
+    [switch]$KeepProcessed,
     [switch]$DisableAfterCreate
 )
 
@@ -81,7 +81,7 @@ foreach ($timeText in $Times) {
 
 $argList = "-NoProfile -ExecutionPolicy Bypass -File `"$runnerScript`" -Limit $Limit -Digest"
 if ($DryRun) { $argList += " -DryRun" }
-if ($DeleteProcessed) { $argList += " -DeleteProcessed" }
+if ($KeepProcessed) { $argList += " -KeepProcessed" }
 
 $action = New-ScheduledTaskAction `
     -Execute "powershell.exe" `

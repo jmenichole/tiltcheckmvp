@@ -32,6 +32,9 @@ if (!excluded) {
   let enforcementEnabled = false;
   let touchGrassCooldownUntil = 0;
   let panelExpanded = false;
+  let panelAlwaysOn = false;
+  let panelWidth = 220;
+  let panelHeight = 300;
   let userCollapsedPanel = false;
   let saveStatus = '';
 
@@ -87,6 +90,9 @@ if (!excluded) {
       tiltWarning: warningEscalation.getState(),
       saveStatus,
       expanded: panelExpanded,
+      alwaysOn: panelAlwaysOn,
+      panelWidth: base.panelWidth ?? panelWidth,
+      panelHeight: base.panelHeight ?? panelHeight,
       position: base.position ?? { left: 0, top: 0 },
     };
   }
@@ -98,7 +104,10 @@ if (!excluded) {
 
   async function initSidebar() {
     const initial = await loadInitialPanelState();
+    panelAlwaysOn = initial.alwaysOn ?? false;
     panelExpanded = initial.expanded ?? false;
+    panelWidth = initial.panelWidth ?? 220;
+    panelHeight = initial.panelHeight ?? 300;
     riskProfile = initial.riskProfile ?? 'moderate';
     gameExclusions = initial.gameExclusions ?? [];
     detector.setProfile(riskProfile);
@@ -106,16 +115,16 @@ if (!excluded) {
     sidebar = new TiltCheckSidebar(host, buildPanelState(initial as PanelState), {
       onLogin: () => openDiscordLogin(),
       onSync: () => {
-        saveStatus = 'Refreshing rules from account…';
+        saveStatus = 'Syncing…';
         sidebar?.update({ saveStatus });
         chrome.runtime
           .sendMessage({ type: 'sync-vault' })
           .then(() => {
-            saveStatus = 'Rules refreshed.';
+            saveStatus = 'Synced.';
             sidebar?.update({ saveStatus });
           })
           .catch(() => {
-            saveStatus = 'Refresh failed — try again.';
+            saveStatus = 'Sync failed.';
             sidebar?.update({ saveStatus });
           });
       },
@@ -125,17 +134,39 @@ if (!excluded) {
         chrome.storage.local.set({ tc_panel_expanded: panelExpanded });
         sidebar?.update({ expanded: panelExpanded });
       },
-      onPositionChange: (pos) => {
-        chrome.storage.local.set({ tc_panel_position: pos });
+      onToggleAlwaysOn: () => {
+        panelAlwaysOn = !panelAlwaysOn;
+        if (panelAlwaysOn) {
+          panelExpanded = true;
+          userCollapsedPanel = false;
+        }
+        chrome.storage.local.set({
+          tc_panel_always_on: panelAlwaysOn,
+          tc_panel_expanded: panelExpanded,
+        });
+        sidebar?.update({ alwaysOn: panelAlwaysOn, expanded: panelExpanded });
+      },
+      onLayoutChange: (layout) => {
+        const patch: Record<string, unknown> = {};
+        if (layout.panelWidth !== undefined) {
+          panelWidth = layout.panelWidth;
+          patch.tc_panel_width = layout.panelWidth;
+        }
+        if (layout.panelHeight !== undefined) {
+          panelHeight = layout.panelHeight;
+          patch.tc_panel_height = layout.panelHeight;
+        }
+        if (layout.position) patch.tc_panel_position = layout.position;
+        if (Object.keys(patch).length > 0) chrome.storage.local.set(patch);
       },
       onSaveLockoutMinutes: async (minutes) => {
         const token = await getToken();
         if (!token) {
-          saveStatus = 'Connect Discord to save lockout time.';
+          saveStatus = 'Connect first.';
           sidebar?.update({ saveStatus });
           return;
         }
-        saveStatus = 'Saving lockout time...';
+        saveStatus = 'Saving…';
         sidebar?.update({ saveStatus });
         const result = await pushSessionCapMinutes(token, minutes);
         if (!result.ok) {
@@ -146,7 +177,7 @@ if (!excluded) {
         vaultRules = result.rules;
         enforcementEnabled =
           loggedIn && !demoMode && vaultRules.some((r) => r.ruleType === 'session_cap' && r.enabled);
-        saveStatus = 'Lockout time saved.';
+        saveStatus = 'Saved.';
         sidebar?.update({
           saveStatus,
           sessionCapArmed: enforcementEnabled,

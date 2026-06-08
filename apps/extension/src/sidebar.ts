@@ -7,6 +7,13 @@ import type { TiltWarningState } from './tilt-warnings.js';
 
 const CHIP_SIZE = 40;
 const PANEL_Z = 2147483646;
+const MIN_WIDTH = 180;
+const MAX_WIDTH = 400;
+const MIN_HEIGHT = 200;
+const MAX_HEIGHT = 560;
+const DEFAULT_WIDTH = 220;
+const DEFAULT_HEIGHT = 300;
+
 export type GameMatchInfo = {
   status: GameMatchStatus;
   label?: string;
@@ -31,25 +38,47 @@ export type PanelState = {
   tiltWarning: TiltWarningState;
   saveStatus: string;
   expanded: boolean;
+  alwaysOn: boolean;
+  panelWidth: number;
+  panelHeight: number;
   position: { left: number; top: number };
+};
+
+export type PanelLayoutPatch = {
+  alwaysOn?: boolean;
+  panelWidth?: number;
+  panelHeight?: number;
+  expanded?: boolean;
+  position?: { left: number; top: number };
 };
 
 export type PanelActions = {
   onLogin: () => void;
   onSync: () => void;
   onToggleExpand: () => void;
-  onPositionChange: (pos: { left: number; top: number }) => void;
+  onToggleAlwaysOn: () => void;
+  onLayoutChange: (layout: PanelLayoutPatch) => void;
   onSaveLockoutMinutes: (minutes: number) => void;
 };
 
-const RISK_LABELS: Record<RiskProfile, string> = {
+const RISK_SHORT: Record<RiskProfile, string> = {
   conservative: 'Conservative',
   moderate: 'Moderate',
   degen: 'Degen',
 };
 
+const PAGE_MARGIN_STYLE_ID = 'tiltcheck-page-margin';
+
+function clampWidth(w: number): number {
+  return Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(w)));
+}
+
+function clampHeight(h: number): number {
+  return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(h)));
+}
+
 const DEFAULT_POSITION = () => ({
-  left: Math.max(8, window.innerWidth - CHIP_SIZE - 16),
+  left: Math.max(8, window.innerWidth - DEFAULT_WIDTH - 16),
   top: Math.max(8, window.innerHeight - CHIP_SIZE - 16),
 });
 
@@ -66,7 +95,7 @@ export async function loadPanelPosition(): Promise<{ left: number; top: number }
   const stored = await chrome.storage.local.get(['tc_panel_position']);
   const pos = stored.tc_panel_position as { left?: number; top?: number } | undefined;
   if (typeof pos?.left === 'number' && typeof pos?.top === 'number') {
-    return clampPosition(pos.left, pos.top, CHIP_SIZE, CHIP_SIZE);
+    return clampPosition(pos.left, pos.top, DEFAULT_WIDTH, DEFAULT_HEIGHT);
   }
   return DEFAULT_POSITION();
 }
@@ -80,10 +109,16 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     'tc_vault_rules',
     'tc_game_exclusions',
     'tc_panel_expanded',
+    'tc_panel_always_on',
+    'tc_panel_width',
+    'tc_panel_height',
   ]);
   const loggedIn = Boolean(stored.tc_session_token);
-  const vaultRules = (stored.tc_vault_rules as Array<{ ruleType: string; enabled: boolean; config?: { durationMinutes?: number } }>) ?? [];
+  const vaultRules =
+    (stored.tc_vault_rules as Array<{ ruleType: string; enabled: boolean; config?: { durationMinutes?: number } }>) ??
+    [];
   const cap = vaultRules.find((r) => r.ruleType === 'session_cap' && r.enabled);
+  const alwaysOn = stored.tc_panel_always_on === true;
   const position = await loadPanelPosition();
 
   return {
@@ -94,7 +129,10 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     sessionCapArmed: loggedIn && stored.tc_demo === false && Boolean(cap),
     sessionCapMinutes: cap?.config?.durationMinutes ?? 5,
     gameExclusions: (stored.tc_game_exclusions as GameExclusionEntry[]) ?? [],
-    expanded: stored.tc_panel_expanded === true,
+    alwaysOn,
+    panelWidth: clampWidth(typeof stored.tc_panel_width === 'number' ? stored.tc_panel_width : DEFAULT_WIDTH),
+    panelHeight: clampHeight(typeof stored.tc_panel_height === 'number' ? stored.tc_panel_height : DEFAULT_HEIGHT),
+    expanded: alwaysOn || stored.tc_panel_expanded === true,
     position,
     gameMatch: { status: 'clear' },
     liveStats: { clicksIn5s: 0, latestIndicator: null },
@@ -110,8 +148,23 @@ export class TiltCheckSidebar {
   private chipEl: HTMLElement | null = null;
   private panelEl: HTMLElement | null = null;
   private draftLockoutMinutes = 5;
-  private drag: { pointerId: number; startX: number; startY: number; originLeft: number; originTop: number; w: number; h: number } | null =
-    null;
+  private drag: {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originLeft: number;
+    originTop: number;
+    w: number;
+    h: number;
+  } | null = null;
+  private resize: {
+    pointerId: number;
+    edge: 'left' | 'bottom';
+    startX: number;
+    startY: number;
+    originW: number;
+    originH: number;
+  } | null = null;
 
   constructor(host: HTMLElement, initial: PanelState, actions: PanelActions) {
     this.host = host;
@@ -119,7 +172,7 @@ export class TiltCheckSidebar {
     this.actions = actions;
     this.draftLockoutMinutes = initial.sessionCapMinutes;
     this.render();
-    window.addEventListener('resize', () => this.clampAndMove());
+    window.addEventListener('resize', () => this.onWindowResize());
   }
 
   update(partial: Partial<PanelState>) {
@@ -130,28 +183,73 @@ export class TiltCheckSidebar {
     this.render();
   }
 
-  private clampAndMove() {
-    const w = this.state.expanded ? 280 : CHIP_SIZE;
-    const h = this.state.expanded ? 380 : CHIP_SIZE;
-    const pos = clampPosition(this.state.position.left, this.state.position.top, w, h);
+  private onWindowResize() {
+    if (this.state.alwaysOn && this.state.expanded) {
+      this.syncPageMargin();
+      return;
+    }
+    if (!this.state.expanded) return;
+    const pos = clampPosition(
+      this.state.position.left,
+      this.state.position.top,
+      this.state.panelWidth,
+      this.state.panelHeight,
+    );
     if (pos.left !== this.state.position.left || pos.top !== this.state.position.top) {
       this.state.position = pos;
-      this.applyPosition();
-      this.actions.onPositionChange(pos);
+      this.applyFloatPosition();
+      this.actions.onLayoutChange({ position: pos });
     }
   }
 
-  private applyPosition() {
+  private syncPageMargin() {
+    let el = document.getElementById(PAGE_MARGIN_STYLE_ID) as HTMLStyleElement | null;
+    if (!this.state.alwaysOn || !this.state.expanded) {
+      el?.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement('style');
+      el.id = PAGE_MARGIN_STYLE_ID;
+      document.head.appendChild(el);
+    }
+    el.textContent = `html { margin-right: ${this.state.panelWidth}px !important; transition: margin-right .12s ease; }`;
+  }
+
+  private applyFloatPosition() {
     const target = this.state.expanded ? this.panelEl : this.chipEl;
-    if (!target) return;
+    if (!target || this.state.alwaysOn) return;
     target.style.left = `${this.state.position.left}px`;
     target.style.top = `${this.state.position.top}px`;
+    target.style.right = 'auto';
+  }
+
+  private applyPinnedLayout() {
+    if (!this.panelEl) return;
+    this.panelEl.style.display = 'flex';
+    this.panelEl.style.flexDirection = 'column';
+    this.panelEl.style.left = 'auto';
+    this.panelEl.style.top = '0';
+    this.panelEl.style.right = '0';
+    this.panelEl.style.width = `${this.state.panelWidth}px`;
+    this.panelEl.style.height = '100vh';
+    this.panelEl.style.maxHeight = '100vh';
+    this.panelEl.style.borderRadius = '0';
+    this.syncPageMargin();
+  }
+
+  private applyPanelSize() {
+    if (!this.panelEl || this.state.alwaysOn) return;
+    this.panelEl.style.width = `${this.state.panelWidth}px`;
+    this.panelEl.style.height = `${this.state.panelHeight}px`;
+    this.panelEl.style.display = 'flex';
+    this.panelEl.style.flexDirection = 'column';
   }
 
   private attachDrag(el: HTMLElement, handle: HTMLElement, width: number, height: number) {
     handle.style.cursor = 'grab';
     handle.addEventListener('pointerdown', (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || this.state.alwaysOn) return;
       const target = e.target as HTMLElement;
       if (target.closest('[data-tc-no-drag]')) return;
       this.drag = {
@@ -172,50 +270,91 @@ export class TiltCheckSidebar {
       const dy = e.clientY - this.drag.startY;
       const pos = clampPosition(this.drag.originLeft + dx, this.drag.originTop + dy, this.drag.w, this.drag.h);
       this.state.position = pos;
-      this.applyPosition();
+      this.applyFloatPosition();
     });
     const end = (e: PointerEvent) => {
       if (!this.drag || e.pointerId !== this.drag.pointerId) return;
       handle.releasePointerCapture(e.pointerId);
-      this.actions.onPositionChange(this.state.position);
+      this.actions.onLayoutChange({ position: this.state.position });
       this.drag = null;
     };
     handle.addEventListener('pointerup', end);
     handle.addEventListener('pointercancel', end);
   }
 
-  private gameMatchHtml(): string {
-    const { gameMatch } = this.state;
-    if (gameMatch.status === 'clear') {
-      return '<span style="color:#6b7280">No excluded game detected</span>';
+  private attachResize(panel: HTMLElement) {
+    const leftHandle = panel.querySelector('[data-tc-resize-left]') as HTMLElement | null;
+    const bottomHandle = panel.querySelector('[data-tc-resize-bottom]') as HTMLElement | null;
+
+    const onMove = (e: PointerEvent) => {
+      if (!this.resize || e.pointerId !== this.resize.pointerId) return;
+      if (this.resize.edge === 'left' && this.state.alwaysOn) {
+        const dw = this.resize.startX - e.clientX;
+        const w = clampWidth(this.resize.originW + dw);
+        this.state.panelWidth = w;
+        this.applyPinnedLayout();
+      } else if (this.resize.edge === 'bottom' && !this.state.alwaysOn) {
+        const dh = e.clientY - this.resize.startY;
+        const h = clampHeight(this.resize.originH + dh);
+        this.state.panelHeight = h;
+        this.applyPanelSize();
+      }
+    };
+
+    const end = (e: PointerEvent) => {
+      if (!this.resize || e.pointerId !== this.resize.pointerId) return;
+      this.actions.onLayoutChange({
+        panelWidth: this.state.panelWidth,
+        panelHeight: this.state.panelHeight,
+      });
+      this.resize = null;
+    };
+
+    const arm = (edge: 'left' | 'bottom', el: HTMLElement) => {
+      el.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.resize = {
+          pointerId: e.pointerId,
+          edge,
+          startX: e.clientX,
+          startY: e.clientY,
+          originW: this.state.panelWidth,
+          originH: this.state.panelHeight,
+        };
+        el.setPointerCapture(e.pointerId);
+      });
+      el.addEventListener('pointermove', onMove);
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+    };
+
+    if (leftHandle && this.state.alwaysOn) arm('left', leftHandle);
+    if (bottomHandle && !this.state.alwaysOn) arm('bottom', bottomHandle);
+  }
+
+  private alertLine(): string {
+    const { gameMatch, tiltWarning } = this.state;
+    if (gameMatch.status === 'warn') {
+      return `<span style="color:#ff4a4a">${gameMatch.label} — ${gameMatch.countdownSec ?? '?'}s</span>`;
     }
     if (gameMatch.status === 'demo-banner') {
-      return `<span style="color:#f59e0b">Demo: would block ${gameMatch.label ?? 'game'}</span>`;
-    }
-    if (gameMatch.status === 'warn') {
-      return `<span style="color:#ff4a4a;font-weight:700">⚠ ${gameMatch.label} — leave in ${gameMatch.countdownSec ?? '?'}s</span>`;
+      return `<span style="color:#f59e0b">Demo block: ${gameMatch.label ?? 'game'}</span>`;
     }
     if (gameMatch.status === 'blocked') {
-      return `<span style="color:#ff4a4a;font-weight:700">Blocked: ${gameMatch.label ?? 'game'}</span>`;
+      return `<span style="color:#ff4a4a">Blocked: ${gameMatch.label ?? 'game'}</span>`;
     }
-    return '';
-  }
-
-  private indicatorHtml(): string {
+    if (tiltWarning.activeIndicator && tiltWarning.stage > 0) {
+      const color = tiltWarning.stage >= 2 ? '#ff4a4a' : '#f59e0b';
+      return `<span style="color:${color}">Tilt ${tiltWarning.stage}/2</span>`;
+    }
     const ind = this.state.liveStats.latestIndicator;
-    if (!ind) return '<span style="color:#6b7280">None</span>';
-    const color =
-      ind.severity === 'critical' ? '#ff4a4a' : ind.severity === 'high' ? '#f59e0b' : '#17c3b2';
-    return `<span style="color:${color}">${ind.type} · ${ind.severity}</span>`;
-  }
-
-  private tiltWarningHtml(): string {
-    const { tiltWarning } = this.state;
-    if (!tiltWarning.activeIndicator || tiltWarning.stage === 0) {
-      return '<span style="color:#6b7280">No active warnings</span>';
+    if (ind && (ind.severity === 'high' || ind.severity === 'critical')) {
+      const color = ind.severity === 'critical' ? '#ff4a4a' : '#f59e0b';
+      return `<span style="color:${color}">${ind.severity} · ${this.state.liveStats.clicksIn5s} clk</span>`;
     }
-    const color = tiltWarning.stage >= 2 ? '#ff4a4a' : '#f59e0b';
-    return `<span style="color:${color}">Stage ${tiltWarning.stage}: ${tiltWarning.activeIndicator.description}</span>`;
+    return '<span style="color:#4b5563">All clear</span>';
   }
 
   private render() {
@@ -223,109 +362,133 @@ export class TiltCheckSidebar {
     const baseStyle =
       'position:fixed;z-index:' +
       PANEL_Z +
-      ';font:12px/1.4 system-ui,-apple-system,sans-serif;color:#e6e6e6;user-select:none;touch-action:none';
+      ';font:12px/1.35 system-ui,-apple-system,sans-serif;color:#e6e6e6;user-select:none;touch-action:none';
 
     if (!this.state.expanded) {
+      document.getElementById(PAGE_MARGIN_STYLE_ID)?.remove();
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.title = 'TiltCheck — click to expand';
+      chip.title = 'TiltCheck';
       chip.style.cssText =
         baseStyle +
         `;width:${CHIP_SIZE}px;height:${CHIP_SIZE}px;border-radius:50%;border:1px solid rgba(23,195,178,.45);background:#0a0c10;color:#17c3b2;font:700 11px/1 ui-monospace,monospace;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:0;cursor:pointer`;
       chip.textContent = 'TC';
       chip.addEventListener('click', () => this.actions.onToggleExpand());
-      chip.addEventListener('dblclick', (e) => {
-        e.preventDefault();
-      });
       this.chipEl = chip;
       this.panelEl = null;
       this.host.appendChild(chip);
-      this.applyPosition();
+      this.applyFloatPosition();
       this.attachDrag(chip, chip, CHIP_SIZE, CHIP_SIZE);
       return;
     }
 
+    const pinned = this.state.alwaysOn;
     const panel = document.createElement('div');
     panel.style.cssText =
       baseStyle +
-      ';width:280px;background:#0a0c10;border:1px solid rgba(23,195,178,.3);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.45);overflow:hidden';
+      `;background:#0a0c10;border:1px solid rgba(23,195,178,.3);box-shadow:${pinned ? 'none' : '0 8px 28px rgba(0,0,0,.45)'};overflow:hidden;box-sizing:border-box`;
+
+    if (pinned) {
+      panel.style.borderRadius = '0';
+      panel.style.borderRight = 'none';
+      panel.style.borderTop = 'none';
+      panel.style.borderBottom = 'none';
+    } else {
+      panel.style.borderRadius = '10px';
+      panel.style.width = `${this.state.panelWidth}px`;
+      panel.style.height = `${this.state.panelHeight}px`;
+      panel.style.display = 'flex';
+      panel.style.flexDirection = 'column';
+    }
+
+    const pinActive = pinned ? 'color:#17c3b2;border-color:rgba(23,195,178,.6)' : 'color:#6b7280;border-color:rgba(107,114,128,.4)';
 
     const header = document.createElement('div');
-    header.style.cssText =
-      'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(23,195,178,.08);border-bottom:1px solid rgba(23,195,178,.2);cursor:grab';
-    header.innerHTML =
-      '<strong data-tc-drag-handle style="font-size:13px;color:#17c3b2">TiltCheck</strong><button type="button" data-tc-minimize data-tc-no-drag style="background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:16px;line-height:1;padding:2px 6px">−</button>';
+    header.style.cssText = pinned
+      ? 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(23,195,178,.08);border-bottom:1px solid rgba(23,195,178,.2);flex-shrink:0'
+      : 'display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:rgba(23,195,178,.08);border-bottom:1px solid rgba(23,195,178,.2);cursor:grab;flex-shrink:0';
+    header.innerHTML = `
+      <strong data-tc-drag-handle style="font-size:12px;color:#17c3b2">TC</strong>
+      <div style="display:flex;gap:4px" data-tc-no-drag>
+        <button type="button" data-tc-pin title="Pin right (shrink page)" style="background:transparent;border:1px solid;${pinActive};cursor:pointer;font-size:11px;line-height:1;padding:2px 6px;border-radius:4px">Pin</button>
+        <button type="button" data-tc-minimize title="Minimize" style="background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:15px;line-height:1;padding:2px 6px">−</button>
+      </div>`;
+
+    const userLine = this.state.loggedIn
+      ? `@${this.state.username ?? 'player'}`
+      : '<button type="button" data-tc-login style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit">Connect</button>';
+
+    const armed = this.state.sessionCapArmed
+      ? `Armed ${this.state.sessionCapMinutes}m`
+      : 'Lockout off';
+    const demo = this.state.demoMode ? ' · Demo' : '';
+    const sens = RISK_SHORT[this.state.riskProfile];
 
     const body = document.createElement('div');
-    body.style.cssText = 'padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto';
-
-    const account = this.state.loggedIn
-      ? `Hi, <strong>${this.state.username ?? 'player'}</strong>`
-      : 'Not connected — <button type="button" data-tc-login data-tc-no-drag style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit;text-decoration:underline">Connect Discord</button>';
-
-    const protection = [
-      `Tilt sensitivity: <strong>${RISK_LABELS[this.state.riskProfile]}</strong>`,
-      `Touch Grass lockout: ${
-        this.state.sessionCapArmed
-          ? `<strong>armed (${this.state.sessionCapMinutes} min tab lock)</strong>`
-          : '<span style="color:#6b7280">not armed — set lockout time below</span>'
-      }`,
-      this.state.demoMode ? '<span style="color:#f59e0b">Demo mode — warnings only</span>' : '',
-      '<span style="color:#6b7280;font-size:10px;line-height:1.4;display:block;margin-top:2px">Tab lock when tilt or blocked games hit — not your casino balance vault.</span>',
-    ]
-      .filter(Boolean)
-      .join('<br/>');
-
-    const blockCount = this.state.gameExclusions.length;
-    const gameBlocksSection = this.state.loggedIn
-      ? `<strong>${blockCount}</strong> active — <button type="button" data-tc-settings-more data-tc-no-drag style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit;text-decoration:underline">Edit on web</button><br/><span style="color:#6b7280;font-size:10px;line-height:1.4">Save blocks in Settings, then tap Refresh rules.</span>`
-      : '<span style="color:#6b7280">Connect Discord, set blocks on web, then Refresh rules.</span>';
-
-    const warnBanner =
-      this.state.gameMatch.status === 'warn' || this.state.gameMatch.status === 'demo-banner'
-        ? `<div style="padding:8px 10px;border-radius:6px;background:rgba(255,74,74,.12);border:1px solid rgba(255,74,74,.35);margin-bottom:4px">${this.gameMatchHtml()}</div>`
-        : '';
+    body.style.cssText = 'padding:8px 10px 10px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;overflow-y:auto';
 
     body.innerHTML = `
-      ${warnBanner}
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Account</div>${account}</section>
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Protection</div>${protection}</section>
-      <section data-tc-no-drag>
-        <div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Lockout time</div>
-        <div style="display:flex;gap:6px;align-items:center">
-          <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} style="width:56px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />
-          <span style="color:#9ca3af;font-size:11px">min tab lock</span>
-          <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:11px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
-        </div>
-      </section>
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game blocks</div>${gameBlocksSection}</section>
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game match</div>${this.gameMatchHtml()}</section>
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Tilt warnings</div>${this.tiltWarningHtml()}</section>
-      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Live stats</div>
-        Clicks (5s): <strong>${this.state.liveStats.clicksIn5s}</strong><br/>
-        Latest: ${this.indicatorHtml()}
-      </section>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
-        <button type="button" data-tc-sync data-tc-no-drag style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600" title="Pull game blocks (from web settings) and lockout rules from your account">Refresh rules</button>
+      <div style="font-size:11px;line-height:1.5">
+        <div>${userLine} · ${sens}${demo}</div>
+        <div style="color:#9ca3af">${armed} · ${this.state.gameExclusions.length} blocks</div>
+        <div style="margin-top:4px">${this.alertLine()}</div>
       </div>
-      ${this.state.saveStatus ? `<p data-tc-no-drag style="margin:4px 0 0;font-size:11px;color:#9ca3af">${this.state.saveStatus}</p>` : ''}
+      <div data-tc-no-drag style="display:flex;gap:6px;align-items:center">
+        <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} title="Lockout minutes" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />
+        <span style="color:#6b7280;font-size:10px">min lock</span>
+        <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:10px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
+      </div>
+      <div data-tc-no-drag style="display:flex;gap:6px">
+        <button type="button" data-tc-sync style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600">Sync</button>
+        <button type="button" data-tc-settings-more style="padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.2);background:transparent;color:#9ca3af;cursor:pointer;font:inherit;font-size:10px">Web</button>
+      </div>
+      ${this.state.saveStatus ? `<p data-tc-no-drag style="margin:0;font-size:10px;color:#6b7280">${this.state.saveStatus}</p>` : ''}
     `;
+
+    if (pinned) {
+      const resizeLeft = document.createElement('div');
+      resizeLeft.setAttribute('data-tc-resize-left', '1');
+      resizeLeft.style.cssText =
+        'position:absolute;left:0;top:0;bottom:0;width:6px;cursor:ew-resize;z-index:2';
+      resizeLeft.title = 'Resize';
+      panel.appendChild(resizeLeft);
+    } else {
+      const resizeBottom = document.createElement('div');
+      resizeBottom.setAttribute('data-tc-resize-bottom', '1');
+      resizeBottom.style.cssText =
+        'position:absolute;left:0;right:0;bottom:0;height:6px;cursor:ns-resize;z-index:2';
+      resizeBottom.title = 'Resize';
+      panel.appendChild(resizeBottom);
+    }
 
     panel.appendChild(header);
     panel.appendChild(body);
+    panel.style.position = 'fixed';
     this.panelEl = panel;
     this.chipEl = null;
     this.host.appendChild(panel);
-    this.applyPosition();
 
-    const dragHandle = header.querySelector('[data-tc-drag-handle]') as HTMLElement | null;
-    if (dragHandle) this.attachDrag(panel, dragHandle, 280, 380);
+    if (pinned) {
+      this.applyPinnedLayout();
+    } else {
+      this.applyPanelSize();
+      this.applyFloatPosition();
+      const dragHandle = header.querySelector('[data-tc-drag-handle]') as HTMLElement | null;
+      if (dragHandle) {
+        this.attachDrag(panel, dragHandle, this.state.panelWidth, this.state.panelHeight);
+      }
+    }
+    this.attachResize(panel);
+    this.syncPageMargin();
 
-    const minimizeBtn = header.querySelector('[data-tc-minimize]');
-    minimizeBtn?.addEventListener('pointerdown', (e) => e.stopPropagation());
-    minimizeBtn?.addEventListener('click', (e) => {
+    header.querySelector('[data-tc-minimize]')?.addEventListener('pointerdown', (e) => e.stopPropagation());
+    header.querySelector('[data-tc-minimize]')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.actions.onToggleExpand();
+    });
+    header.querySelector('[data-tc-pin]')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.actions.onToggleAlwaysOn();
     });
 
     body.querySelector('[data-tc-login]')?.addEventListener('click', () => this.actions.onLogin());
@@ -333,15 +496,17 @@ export class TiltCheckSidebar {
       window.open(`${webBaseUrl()}/settings#game-exclusion`, '_blank');
     });
     body.querySelector('[data-tc-sync]')?.addEventListener('click', () => this.actions.onSync());
-
     body.querySelector('[data-tc-lockout-min]')?.addEventListener('input', (e) => {
       const val = Number((e.target as HTMLInputElement).value);
       if (Number.isFinite(val)) this.draftLockoutMinutes = val;
     });
-
     body.querySelector('[data-tc-save-lockout]')?.addEventListener('click', () => {
       this.actions.onSaveLockoutMinutes(this.draftLockoutMinutes);
     });
+  }
 
+  destroy() {
+    document.getElementById(PAGE_MARGIN_STYLE_ID)?.remove();
+    this.host.innerHTML = '';
   }
 }

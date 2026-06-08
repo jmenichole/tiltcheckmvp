@@ -10,9 +10,10 @@ const PANEL_Z = 2147483646;
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
 const MIN_HEIGHT = 200;
-const MAX_HEIGHT = 560;
-const DEFAULT_WIDTH = 220;
+const MAX_HEIGHT = 720;
+const DEFAULT_WIDTH = 240;
 const DEFAULT_HEIGHT = 300;
+const DEFAULT_HEIGHT_WITH_AV = 420;
 
 export type GameMatchInfo = {
   status: GameMatchStatus;
@@ -60,7 +61,7 @@ export type PanelActions = {
   onToggleAlwaysOn: () => void;
   onLayoutChange: (layout: PanelLayoutPatch) => void;
   onSaveLockoutMinutes: (minutes: number) => void;
-  onOpenAutoVault: () => void;
+  onAvMountReady: (mount: HTMLElement) => void;
 };
 
 const RISK_SHORT: Record<RiskProfile, string> = {
@@ -168,6 +169,7 @@ export class TiltCheckSidebar {
     originW: number;
     originH: number;
   } | null = null;
+  private avMountEl: HTMLElement | null = null;
 
   constructor(host: HTMLElement, initial: PanelState, actions: PanelActions) {
     this.host = host;
@@ -437,24 +439,36 @@ export class TiltCheckSidebar {
         <div style="color:#9ca3af">${armed} · ${this.state.gameExclusions.length} blocks</div>
         <div style="margin-top:4px">${this.alertLine()}</div>
       </div>
+      <div data-tc-no-drag style="font-size:10px;color:#6b7280;line-height:1.45;padding:6px 8px;background:#12161e;border-radius:6px;border:1px solid rgba(30,37,51,.8)">
+        <div><span style="color:#5eead4">Tilt</span> — pulse check → last call → Touch Grass</div>
+        <div><span style="color:#5eead4">Blocks</span> — edit on Web → Sync here</div>
+        <div><span style="color:#5eead4">Lockout</span> — arms when connected, demo off</div>
+      </div>
       <div data-tc-no-drag style="display:flex;gap:6px;align-items:center">
-        <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} title="Lockout minutes" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />
+        <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} title="Touch Grass lockout length (minutes)" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />
         <span style="color:#6b7280;font-size:10px">min lock</span>
         <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:10px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
       </div>
-      ${
-        this.state.autoVaultSite
-          ? `<div data-tc-no-drag style="display:flex;gap:6px;align-items:center">
-        <button type="button" data-tc-autovault style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.45);background:rgba(23,195,178,.12);color:#17c3b2;cursor:pointer;font:inherit;font-size:11px;font-weight:600">AutoVault · ${this.state.autoVaultSite}</button>
-      </div>`
-          : ''
-      }
       <div data-tc-no-drag style="display:flex;gap:6px">
         <button type="button" data-tc-sync style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600">Sync</button>
         <button type="button" data-tc-settings-more style="padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.2);background:transparent;color:#9ca3af;cursor:pointer;font:inherit;font-size:10px">Web</button>
       </div>
       ${this.state.saveStatus ? `<p data-tc-no-drag style="margin:0;font-size:10px;color:#6b7280">${this.state.saveStatus}</p>` : ''}
     `;
+
+    if (this.state.autoVaultSite) {
+      const avWrap = document.createElement('div');
+      avWrap.setAttribute('data-tc-no-drag', '1');
+      avWrap.style.cssText =
+        'border-top:1px solid rgba(23,195,178,.2);padding-top:8px;margin-top:2px;flex-shrink:0';
+      if (!this.avMountEl) {
+        this.avMountEl = document.createElement('div');
+        this.avMountEl.id = 'tc-panel-av-mount';
+        this.actions.onAvMountReady(this.avMountEl);
+      }
+      avWrap.appendChild(this.avMountEl);
+      body.appendChild(avWrap);
+    }
 
     if (pinned) {
       const resizeLeft = document.createElement('div');
@@ -507,7 +521,6 @@ export class TiltCheckSidebar {
       window.open(`${webBaseUrl()}/settings#game-exclusion`, '_blank');
     });
     body.querySelector('[data-tc-sync]')?.addEventListener('click', () => this.actions.onSync());
-    body.querySelector('[data-tc-autovault]')?.addEventListener('click', () => this.actions.onOpenAutoVault());
     body.querySelector('[data-tc-lockout-min]')?.addEventListener('input', (e) => {
       const val = Number((e.target as HTMLInputElement).value);
       if (Number.isFinite(val)) this.draftLockoutMinutes = val;

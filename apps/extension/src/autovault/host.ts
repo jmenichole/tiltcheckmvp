@@ -1,4 +1,5 @@
 import type { AutoVaultSite } from './types.js';
+import type { StatusType } from './types.js';
 import { detectAutoVaultSite, watchSiteChange } from './site.js';
 import {
   getConfig,
@@ -25,6 +26,7 @@ export class AutoVaultHost {
   private engine: VaultEngine | null = null;
   private sessionWatch: ReturnType<typeof createSessionWatch> | null = null;
   private ui: AutoVaultUiApi | null = null;
+  private mountEl: HTMLElement | null = null;
   private unwatchSite: (() => void) | null = null;
   private onboarded = false;
   private lastRunning = false;
@@ -38,7 +40,7 @@ export class AutoVaultHost {
     await loadConfig();
     this.onboarded = await isOnboarded();
     this.lastRunning = await getLastRunning();
-    this.mountForSite(this.site);
+    this.setupEngines(this.site);
 
     this.unwatchSite = watchSiteChange((nextSite) => {
       if (!nextSite) {
@@ -54,15 +56,36 @@ export class AutoVaultHost {
     });
   }
 
-  private async remount(): Promise<void> {
-    if (!this.site) return;
-    this.onboarded = await isOnboarded();
-    this.lastRunning = await getLastRunning();
-    this.mountForSite(this.site);
+  setMountElement(el: HTMLElement | null): void {
+    if (el === this.mountEl && this.ui) return;
+    this.ui?.destroy();
+    this.ui = null;
+    this.mountEl = el;
+    if (el && this.site && this.engine && this.sessionWatch) {
+      this.ui = this.createUi(el);
+      console.log(LOG_PREFIX, `UI embedded in TC panel (${this.site.name})`);
+    }
   }
 
-  private mountForSite(site: AutoVaultSite): void {
-    const logToUi = (msg: string, type?: import('./types.js').StatusType) => {
+  private async remount(): Promise<void> {
+    if (!this.site) return;
+    this.ui?.destroy();
+    this.ui = null;
+    this.engine?.stop();
+    this.sessionWatch?.stop();
+    this.nutsEngine?.destroyBridge();
+    this.engine = null;
+    this.stakeEngine = null;
+    this.nutsEngine = null;
+    this.sessionWatch = null;
+    this.onboarded = await isOnboarded();
+    this.lastRunning = await getLastRunning();
+    this.setupEngines(this.site);
+    if (this.mountEl) this.ui = this.createUi(this.mountEl);
+  }
+
+  private setupEngines(site: AutoVaultSite): void {
+    const logToUi = (msg: string, type?: StatusType) => {
       console.log(LOG_PREFIX, msg);
       this.ui?.setStatus(msg, type);
       this.ui?.render();
@@ -99,10 +122,19 @@ export class AutoVaultHost {
       this.ui?.render();
     });
 
-    this.ui = mountAutoVaultUi({
+    console.log(LOG_PREFIX, `Engines ready for ${site.name}`);
+  }
+
+  private createUi(mount: HTMLElement): AutoVaultUiApi {
+    const site = this.site!;
+    const engine = this.engine!;
+    const sessionWatch = this.sessionWatch!;
+
+    return mountAutoVaultUi({
+      mount,
       site,
-      engine: this.engine,
-      sessionWatch: this.sessionWatch,
+      engine,
+      sessionWatch,
       config: getConfig(),
       onboarded: this.onboarded,
       lastRunning: this.lastRunning,
@@ -110,17 +142,17 @@ export class AutoVaultHost {
         void saveConfig(cfg);
       },
       onEngineStart: () => {
-        this.engine?.start();
+        engine.start();
         void setLastRunning(true);
         this.ui?.render();
       },
       onEngineStop: (clearLast) => {
-        this.engine?.stop();
+        engine.stop();
         if (clearLast) void setLastRunning(false);
         this.ui?.render();
       },
       onEngineKill: () => {
-        this.engine?.kill();
+        engine.kill();
         void setLastRunning(false);
         this.ui?.render();
       },
@@ -128,53 +160,25 @@ export class AutoVaultHost {
         await setOnboarded();
         this.onboarded = true;
         this.ui?.destroy();
-        this.ui = mountAutoVaultUi({
-          site,
-          engine: this.engine!,
-          sessionWatch: this.sessionWatch!,
-          config: getConfig(),
-          onboarded: true,
-          lastRunning: true,
-          onConfigChange: (cfg) => void saveConfig(cfg),
-          onEngineStart: () => {
-            this.engine?.start();
-            void setLastRunning(true);
-            this.ui?.render();
-          },
-          onEngineStop: (clearLast) => {
-            this.engine?.stop();
-            if (clearLast) void setLastRunning(false);
-            this.ui?.render();
-          },
-          onEngineKill: () => {
-            this.engine?.kill();
-            void setLastRunning(false);
-            this.ui?.render();
-          },
-          onResetOnboarding: async () => {
-            await resetOnboarding();
-            this.teardown();
-            this.onboarded = false;
-            await this.remount();
-          },
-          onStatus: () => {},
-        });
+        this.ui = null;
+        if (this.mountEl) {
+          this.ui = this.createUi(this.mountEl);
+        }
         void setLastRunning(true);
         this.sessionWatch?.start();
-        this.engine?.start();
+        engine.start();
       },
       onResetOnboarding: async () => {
-        this.engine?.stop();
+        engine.stop();
         this.sessionWatch?.stop();
         await resetOnboarding();
         this.ui?.destroy();
+        this.ui = null;
         this.onboarded = false;
         await this.remount();
       },
       onStatus: () => {},
     });
-
-    console.log(LOG_PREFIX, `Mounted for ${site.name}`);
   }
 
   private teardown(): void {
@@ -192,6 +196,7 @@ export class AutoVaultHost {
   destroy(): void {
     this.unwatchSite?.();
     this.unwatchSite = null;
+    this.mountEl = null;
     this.teardown();
   }
 }

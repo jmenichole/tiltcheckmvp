@@ -5,18 +5,16 @@ const LOG_PREFIX = '[TiltCheck AutoVault]';
 
 let host: AutoVaultHost | null = null;
 let started = false;
+let pendingMount: HTMLElement | null = null;
 
 export function getAutoVaultSiteName(): string | null {
   return detectAutoVaultSite()?.name ?? null;
 }
 
-export function syncAutoVaultDockOffset(px: number): void {
-  document.documentElement.style.setProperty('--tc-tilt-dock-offset', `${Math.max(0, px)}px`);
-}
-
-export function revealAutoVaultPanel(): void {
-  document.getElementById('tc-av-share-root')?.classList.remove('hidden-panel');
-  document.getElementById('tc-av-share-stealth')?.classList.add('hidden');
+/** Mount AutoVault UI inside the TC sidebar panel. */
+export function setAutoVaultSidebarMount(el: HTMLElement | null): void {
+  pendingMount = el;
+  host?.setMountElement(el);
 }
 
 export function startAutoVaultIfSupported(): void {
@@ -29,6 +27,7 @@ export function startAutoVaultIfSupported(): void {
   const scheduleStart = () => {
     if (!document.body) return;
     void host?.start().then(() => {
+      if (pendingMount) host?.setMountElement(pendingMount);
       console.log(LOG_PREFIX, `Started on ${site.name}`);
     });
   };
@@ -48,5 +47,6 @@ export function startAutoVaultIfSupported(): void {
     host?.destroy();
     host = null;
     started = false;
+    pendingMount = null;
   });
 }

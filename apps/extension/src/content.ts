@@ -16,9 +16,8 @@ import {
 } from './tilt-warnings.js';
 import {
   getAutoVaultSiteName,
-  revealAutoVaultPanel,
+  setAutoVaultSidebarMount,
   startAutoVaultIfSupported,
-  syncAutoVaultDockOffset,
 } from './autovault/bootstrap.js';
 import { dismissPageToast, showPageToast } from './page-toast.js';
 
@@ -48,10 +47,6 @@ if (!excluded) {
   let panelHeight = 300;
   let userCollapsedPanel = false;
   let saveStatus = '';
-
-  function updateAutoVaultDockOffset() {
-    syncAutoVaultDockOffset(panelAlwaysOn && panelExpanded ? panelWidth : 0);
-  }
 
   const detector = new TiltDetector(riskProfile);
   const warningEscalation = new TiltWarningEscalation();
@@ -166,7 +161,6 @@ if (!excluded) {
         panelExpanded = !panelExpanded;
         if (!panelExpanded) userCollapsedPanel = true;
         chrome.storage.local.set({ tc_panel_expanded: panelExpanded });
-        updateAutoVaultDockOffset();
         sidebar?.update({ expanded: panelExpanded });
       },
       onToggleAlwaysOn: () => {
@@ -179,7 +173,6 @@ if (!excluded) {
           tc_panel_always_on: panelAlwaysOn,
           tc_panel_expanded: panelExpanded,
         });
-        updateAutoVaultDockOffset();
         sidebar?.update({ alwaysOn: panelAlwaysOn, expanded: panelExpanded });
       },
       onLayoutChange: (layout) => {
@@ -194,10 +187,9 @@ if (!excluded) {
         }
         if (layout.position) patch.tc_panel_position = layout.position;
         if (Object.keys(patch).length > 0) chrome.storage.local.set(patch);
-        updateAutoVaultDockOffset();
       },
-      onOpenAutoVault: () => {
-        revealAutoVaultPanel();
+      onAvMountReady: (mount) => {
+        setAutoVaultSidebarMount(mount);
       },
       onSaveLockoutMinutes: async (minutes) => {
         const token = await getToken();
@@ -225,7 +217,6 @@ if (!excluded) {
         });
       },
     });
-    updateAutoVaultDockOffset();
     if (autoVaultSiteName) startAutoVaultIfSupported();
   }
 

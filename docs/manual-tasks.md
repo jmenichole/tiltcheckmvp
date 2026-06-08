@@ -133,13 +133,19 @@ Code in this repo is largely ready. These tasks are **your** steps for Supabase,
 
 ## I. Phase 2 — enforcement gate (required before prod DNS)
 
-**Status:** API + vault routes live; auth-gated CRUD verified unauthenticated; **G3–G6 pending manual sign-off** (login → vault save → enforcement).
+**Status:** API + vault routes live; **real-accounts sign-off pending**.
+
+Use the full checklist (game blocks via **web Settings only**, staged tilt warnings, AutoVault on Stake/nuts):
+
+→ **[2026-05-27-real-accounts-signoff.md](./superpowers/reports/2026-05-27-real-accounts-signoff.md)**
+
+Minimum for Phase 2 gate (section C):
 
 - [ ] Open a test casino site in Chrome with extension enabled
-- [ ] Trigger **critical** tilt (fast-click pattern per extension logic)
-- [ ] Confirm **Touch Grass** fullscreen overlay appears
+- [ ] Staged warnings (1–2 banners) then **Touch Grass** on sustained tilt
 - [ ] Confirm betting UI blocked until timer ends
 - [ ] Service worker console: `[TiltCheck] Enforcement fired`
+- [ ] Game blocks: save on web → **Refresh rules** in extension → block fires on matching URL
 - [ ] Run local or CI: `pnpm test:e2e` (green on `main`)
 
 Full definition: [cutover-checklist.md](./cutover-checklist.md) → “Definition: enforcement fires”.

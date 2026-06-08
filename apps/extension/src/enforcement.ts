@@ -39,15 +39,15 @@ export function triggerTouchGrassTimeout(reason: string, durationMs: number): vo
       @keyframes tiltcheck-timer-pulse{0%,100%{opacity:1}50%{opacity:.82}}
     </style>
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#17c3b2,transparent)"></div>
-    <p style="margin:0 0 1.25rem;letter-spacing:.28em;font:700 10px/1 ui-monospace,monospace;color:#17c3b2;text-transform:uppercase">TiltCheck · Degen Protector</p>
+    <p style="margin:0 0 1.25rem;letter-spacing:.28em;font:700 10px/1 ui-monospace,monospace;color:#17c3b2;text-transform:uppercase">TiltCheck · Made for degens</p>
     <h1 style="margin:0;font:900 clamp(2.5rem,10vw,4.5rem)/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 40px rgba(23,195,178,.35),0 0 80px rgba(23,195,178,.12)">Touch Grass</h1>
-    <p style="margin:.75rem 0 0;font-size:1.05rem;font-weight:600;color:#e6e6e6">We locked the table before the tilt hit.</p>
-    <div style="margin:1.5rem 0 0;max-width:26rem;padding:1rem 1.25rem;border:1px solid rgba(23,195,178,.22);border-radius:8px;background:rgba(255,255,255,.03);color:#d1d5db;line-height:1.6;text-align:left">
-      <span style="display:block;margin-bottom:.35rem;font:700 10px/1 ui-monospace,monospace;letter-spacing:.15em;color:#ff4a4a;text-transform:uppercase">Why you're here</span>
+    <p style="margin:.75rem 0 0;font-size:1.05rem;font-weight:600;color:#f3f4f6">Tab locked before the hole got deeper.</p>
+    <div style="margin:1.5rem 0 0;max-width:26rem;padding:1rem 1.25rem;border:1px solid rgba(23,195,178,.35);border-radius:8px;background:#12161e;color:#e6e6e6;line-height:1.55;text-align:left">
+      <span style="display:block;margin-bottom:.35rem;font:700 10px/1 ui-monospace,monospace;letter-spacing:.15em;color:#ff8a72;text-transform:uppercase">Why you are here</span>
       ${reason}
     </div>
     <p id="${TIMER_ID}" style="margin:1.75rem 0 0;font:700 clamp(3rem,12vw,5rem)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#17c3b2;animation:tiltcheck-timer-pulse 2.5s ease-in-out infinite">--:--</p>
-    <p style="margin:1rem 0 0;max-width:22rem;font-size:12px;color:#6b7280;line-height:1.5">Timer hits zero → you're back. For now, step away and touch grass.</p>
+    <p style="margin:1rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Timer hits zero — table unlocks. Go touch grass.</p>
   `;
   document.documentElement.appendChild(root);
 

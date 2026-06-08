@@ -20,6 +20,9 @@ import {
   startAutoVaultIfSupported,
   syncAutoVaultDockOffset,
 } from './autovault/bootstrap.js';
+import { dismissPageToast, showPageToast } from './page-toast.js';
+
+const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
 
 const hostname = window.location.hostname.toLowerCase();
 const autoVaultSiteName = getAutoVaultSiteName();
@@ -56,6 +59,24 @@ if (!excluded) {
 
   const gameWatcher = new GameExclusionWatcher({
     onStateChange: (state) => {
+      if (state.status === 'warn' && state.matched) {
+        showPageToast(GAME_WARN_TOAST_ID, {
+          tone: 'heat',
+          tag: 'TC · GAME BLOCK',
+          headline: `${state.matched.label} is on your no-play list`,
+          sub: `Bounce in ${state.countdownSec ?? '?'}s or the tab locks.`,
+        });
+      } else if (state.status === 'demo-banner' && state.matched) {
+        showPageToast(GAME_WARN_TOAST_ID, {
+          tone: 'demo',
+          tag: 'TC · DEMO',
+          headline: `Would block ${state.matched.label}`,
+          sub: 'Turn off demo mode to enforce game blocks.',
+        });
+      } else if (state.status !== 'blocked') {
+        dismissPageToast(GAME_WARN_TOAST_ID);
+      }
+
       sidebar?.update({
         gameMatch: {
           status: state.status,

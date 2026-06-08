@@ -101,7 +101,7 @@ export class TiltDetector {
       type: 'fast_clicks',
       severity,
       confidence: 0.8,
-      description: 'Rapid clicking detected — take a break.',
+      description: 'Click spam — pace is climbing.',
     };
   }
 
@@ -118,7 +118,7 @@ export class TiltDetector {
         type: 'chasing_losses',
         severity: lossSev,
         confidence: 0.75,
-        description: 'Multiple losses in a short window.',
+        description: 'Loss streak heating up.',
       });
     }
     return indicators;

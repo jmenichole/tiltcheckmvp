@@ -62,10 +62,14 @@ export class AutoVaultHost {
   }
 
   private mountForSite(site: AutoVaultSite): void {
+    const logToUi = (msg: string, type?: import('./types.js').StatusType) => {
+      console.log(LOG_PREFIX, msg);
+      this.ui?.setStatus(msg, type);
+      this.ui?.render();
+    };
+
     const sharedCallbacks = {
-      onLog: () => {
-        this.ui?.render();
-      },
+      onLog: logToUi,
       onVaultedChange: () => {
         this.ui?.render();
       },
@@ -75,10 +79,6 @@ export class AutoVaultHost {
     if (site.mode === 'stake-us') {
       this.stakeEngine = createStakeEngine({
         ...sharedCallbacks,
-        onLog: (msg, type) => {
-          console.log(LOG_PREFIX, msg);
-          this.ui?.render();
-        },
       });
       this.nutsEngine = null;
       this.engine = this.stakeEngine;
@@ -86,10 +86,6 @@ export class AutoVaultHost {
       this.stakeEngine = null;
       this.nutsEngine = createNutsEngine({
         ...sharedCallbacks,
-        onLog: (msg, type) => {
-          console.log(LOG_PREFIX, msg);
-          this.ui?.render();
-        },
         onBalanceChange: (prev, next) => {
           this.sessionWatch?.onNutsBalance(prev, next);
         },

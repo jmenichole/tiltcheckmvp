@@ -88,7 +88,7 @@ export class GameExclusionWatcher {
     this.blocked = true;
     this.resetWarn();
 
-    const reason = `You excluded "${match.label}". TiltCheck locked this game.`;
+    const reason = `${match.label} is on your no-play list — tab locked before the tilt got worse.`;
     if (!this.options.getDemoMode() && this.options.getLoggedIn()) {
       triggerTouchGrassTimeout(reason, this.options.getBlockDurationMs());
     }

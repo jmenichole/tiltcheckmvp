@@ -1,5 +1,6 @@
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
+import { dismissPageToast, showPageToast } from './page-toast.js';
 
 const BANNER_ROOT_ID = 'tiltcheck-tilt-warning-root';
 const RESET_CLEAR_MS = 30_000;
@@ -28,6 +29,12 @@ function highestIndicator(indicators: TiltIndicator[]): TiltIndicator | null {
 function minWarnRank(profile: RiskProfile): number {
   if (profile === 'degen') return 2;
   return 1;
+}
+
+function friendlyHeadline(indicator: TiltIndicator): string {
+  if (indicator.type === 'fast_clicks') return 'Click spam — you are on autopilot.';
+  if (indicator.type === 'chasing_losses') return 'Loss streak heating up.';
+  return indicator.description;
 }
 
 export class TiltWarningEscalation {
@@ -74,51 +81,29 @@ export class TiltWarningEscalation {
     }
 
     if (rank >= 2) {
-      this.stage = this.stage < 2 ? 2 : 2;
+      this.stage = 2;
       return { action: 'warn', indicator: top };
     }
 
-    this.stage = this.stage < 1 ? 1 : 1;
+    this.stage = 1;
     return { action: 'warn', indicator: top };
   }
 }
 
 export function showTiltWarningBanner(indicator: TiltIndicator, stage: 1 | 2, demoMode: boolean): void {
-  dismissTiltWarningBanner();
-
-  const root = document.createElement('div');
-  root.id = BANNER_ROOT_ID;
   const isUrgent = stage === 2;
-  const border = isUrgent ? 'rgba(255,74,74,.55)' : 'rgba(245,158,11,.45)';
-  const bg = isUrgent ? 'rgba(255,74,74,.14)' : 'rgba(245,158,11,.12)';
-  const title = isUrgent ? 'Slow down — lockout next' : 'TiltCheck warning';
-  const demoNote = demoMode ? ' · demo mode (no lockout)' : '';
-
-  root.style.cssText = [
-    'position:fixed',
-    'top:12px',
-    'left:50%',
-    'transform:translateX(-50%)',
-    'z-index:2147483645',
-    'max-width:min(420px,calc(100vw - 24px))',
-    'padding:10px 14px',
-    'border-radius:8px',
-    `border:1px solid ${border}`,
-    `background:${bg}`,
-    'color:#e6e6e6',
-    'font:12px/1.45 system-ui,-apple-system,sans-serif',
-    'box-shadow:0 8px 24px rgba(0,0,0,.35)',
-    'pointer-events:none',
-  ].join(';');
-
-  root.innerHTML = `
-    <p style="margin:0 0 4px;font:700 10px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:${isUrgent ? '#ff4a4a' : '#f59e0b'}">${title}${demoNote}</p>
-    <p style="margin:0;font-weight:600">${indicator.description}</p>
-    <p style="margin:4px 0 0;font-size:11px;color:#9ca3af">${isUrgent ? 'One more spike triggers Touch Grass lockout.' : 'Take a breath before the table locks.'}</p>
-  `;
-  document.documentElement.appendChild(root);
+  showPageToast(BANNER_ROOT_ID, {
+    tone: isUrgent ? 'heat' : 'pulse',
+    tag: isUrgent ? 'TC · LAST CALL' : 'TC · PULSE CHECK',
+    headline: friendlyHeadline(indicator),
+    sub: isUrgent
+      ? demoMode
+        ? 'Demo mode — no lockout, but slow down.'
+        : 'Next spike locks the tab. Touch Grass incoming.'
+      : 'Walk it off before we lock the table.',
+  });
 }
 
 export function dismissTiltWarningBanner(): void {
-  document.getElementById(BANNER_ROOT_ID)?.remove();
+  dismissPageToast(BANNER_ROOT_ID);
 }

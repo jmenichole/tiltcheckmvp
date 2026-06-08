@@ -340,22 +340,23 @@ export class TiltCheckSidebar {
   private alertLine(): string {
     const { gameMatch, tiltWarning } = this.state;
     if (gameMatch.status === 'warn') {
-      return `<span style="color:#ff4a4a">${gameMatch.label} — ${gameMatch.countdownSec ?? '?'}s</span>`;
+      return `<span style="color:#ff8a72;font-weight:600">${gameMatch.label} · ${gameMatch.countdownSec ?? '?'}s</span>`;
     }
     if (gameMatch.status === 'demo-banner') {
-      return `<span style="color:#f59e0b">Demo block: ${gameMatch.label ?? 'game'}</span>`;
+      return `<span style="color:#8a97a8">Demo · ${gameMatch.label ?? 'game'}</span>`;
     }
     if (gameMatch.status === 'blocked') {
-      return `<span style="color:#ff4a4a">Blocked: ${gameMatch.label ?? 'game'}</span>`;
+      return `<span style="color:#ff5c5c;font-weight:600">Locked · ${gameMatch.label ?? 'game'}</span>`;
     }
     if (tiltWarning.activeIndicator && tiltWarning.stage > 0) {
-      const color = tiltWarning.stage >= 2 ? '#ff4a4a' : '#f59e0b';
-      return `<span style="color:${color}">Tilt ${tiltWarning.stage}/2</span>`;
+      const color = tiltWarning.stage >= 2 ? '#ff8a72' : '#5eead4';
+      const label = tiltWarning.stage >= 2 ? 'Last call' : 'Pulse check';
+      return `<span style="color:${color};font-weight:600">${label}</span>`;
     }
     const ind = this.state.liveStats.latestIndicator;
     if (ind && (ind.severity === 'high' || ind.severity === 'critical')) {
-      const color = ind.severity === 'critical' ? '#ff4a4a' : '#f59e0b';
-      return `<span style="color:${color}">${ind.severity} · ${this.state.liveStats.clicksIn5s} clk</span>`;
+      const color = ind.severity === 'critical' ? '#ff5c5c' : '#5eead4';
+      return `<span style="color:${color}">${this.state.liveStats.clicksIn5s} clk · heating up</span>`;
     }
     return '<span style="color:#4b5563">All clear</span>';
   }

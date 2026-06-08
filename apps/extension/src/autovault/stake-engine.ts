@@ -24,12 +24,12 @@ const BALANCE_SELECTORS = [
 ];
 
 const FLAVOR = {
-  profit: ['Heater detected. Skimming the top.', 'Profit hit. Locking some in.'],
-  bigWin: ['Big win. Bag secured.', 'Heater confirmed. Vaulting.'],
-  deposit: ['Deposit detected. Skimming the top.'],
-  start: ['AutoVault on. Watching the bag.', 'Monitoring active.'],
-  stop: ['AutoVault off.', 'Paused. Your call.'],
-  rateLimit: ['Rate cap hit. Breathing.', 'Vault limit — retry soon.'],
+  profit: ['Heater — skimming the top.', 'Green spike — bagging some.'],
+  bigWin: ['Big hit — secured to vault.', 'Heater confirmed — vaulting.'],
+  deposit: ['Deposit in — skimming cut.'],
+  start: ['AutoVault live. Watching the bag.', 'Skim mode on.'],
+  stop: ['AutoVault paused.', 'Skim off — your call.'],
+  rateLimit: ['Vault cap hit — cooling off.', 'Too many skims — retry soon.'],
 };
 
 function pickFlavor(arr: string[]): string {

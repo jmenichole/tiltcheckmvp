@@ -20,6 +20,7 @@ type SessionWatch = ReturnType<typeof createSessionWatch>;
 export type AutoVaultUiApi = {
   render: () => void;
   destroy: () => void;
+  setStatus: (message: string, type?: StatusType) => void;
 };
 
 export type AutoVaultUiOptions = {
@@ -89,10 +90,15 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
         #tc-av-share-root .tc-master.on { background: ${BRAND.teal}; color: #041210; }
         #tc-av-share-root .tc-stat { font-size: 12px; color: ${BRAND.teal}; font-weight: 600; }
         #tc-av-share-root .tc-wager { font-size: 11px; color: ${BRAND.muted}; line-height: 1.35; font-family: ui-monospace, monospace; }
-        #tc-av-share-root .tc-status { font-size: 11px; color: ${BRAND.muted}; line-height: 1.4; word-break: break-word; }
-        #tc-av-share-root .tc-status.success { color: ${BRAND.teal}; }
-        #tc-av-share-root .tc-status.warning { color: #fbbf24; }
-        #tc-av-share-root .tc-status.error { color: ${BRAND.danger}; }
+        #tc-av-share-root .tc-status {
+            font-size: 12px; color: #e6e6e6; line-height: 1.45; word-break: break-word;
+            padding: 8px 10px; border-radius: 8px; background: #080a0d; border: 1px solid ${BRAND.border};
+        }
+        #tc-av-share-root .tc-status.success { color: #5eead4; border-color: rgba(23,195,178,.45); background: #0a1412; }
+        #tc-av-share-root .tc-status.warning { color: #ffe8e0; border-color: rgba(255,138,114,.5); background: #1a1210; }
+        #tc-av-share-root .tc-status.error { color: #ffb4b4; border-color: rgba(239,68,68,.55); background: #1a0e0e; }
+        #tc-av-share-root .tc-status.profit, #tc-av-share-root .tc-status.bigwin { color: #5eead4; border-color: rgba(23,195,178,.4); background: #0a1412; }
+        #tc-av-share-root .tc-status .tc-time { color: #6b7280; margin-right: 6px; }
         #tc-av-share-root .tc-btn-primary {
             width: 100%; min-height: 44px; border: none; border-radius: 10px; font-weight: 700;
             background: ${BRAND.teal}; color: #041210; cursor: pointer; font-size: 14px;
@@ -332,6 +338,7 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
 
   return {
     render,
+    setStatus,
     destroy() {
       root.remove();
       stealth.remove();

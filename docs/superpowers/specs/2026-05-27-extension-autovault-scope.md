@@ -1,7 +1,7 @@
 # Extension Auto-Vault — Scope (Track 4)
 
 **Date:** 2026-05-27  
-**Status:** Scoped — not started  
+**Status:** Shipped (v1 in extension 2.1.0)  
 **Priority:** P2 (after protection loop + site IA)  
 **Related:** [Phase 2 protected session](./2026-06-07-phase-2-protected-session-design.md), userscript `apps/web/public/userscripts/tiltcheck-autovault-share.user.js`
 
@@ -73,27 +73,22 @@ Stake and nuts share config shape via `chrome.storage.local` (`tc_autovault_conf
 
 ## 4. Work breakdown
 
-### Phase A — Scaffold (1–2 days)
-- [ ] Add manifest `content_scripts` entries for stake + nuts with correct `world` / `run_at`
-- [ ] Extract shared types: `AutoVaultConfig`, site mode, rate-limit constants from userscript
-- [ ] `chrome.storage` adapter replacing `localStorage` keys (`tiltcheck-autovault-share-*`)
-- [ ] Feature flag: `tc_autovault_enabled` default off; opt-in from `/tools/auto-vault` or extension options
+### Phase A — Scaffold — **done**
+- [x] Manifest entries for stake + nuts (`autovault.js`, `autovault-nuts-main.js` MAIN world)
+- [x] Shared types + `chrome.storage` / `chrome.storage.session` adapter
+- [x] Site auto-detect + hostname watcher switches Stake ↔ nuts engines
 
-### Phase B — Stake.us port (2–3 days)
-- [ ] Port balance observers, vault button injection, skim %, deposit-on-win flow
-- [ ] Parity tests against userscript behavior (manual checklist on staging account)
-- [ ] Rate limit + min balance checks
+### Phase B — Stake.us port — **done**
+- [x] GraphQL balance polling, profit/deposit skim, CF backoff, rate limits
 
-### Phase C — nuts.gg port (2–3 days)
-- [ ] MAIN-world WS hook module (build as separate bundle injected via `chrome.scripting` or manifest `world: MAIN`)
-- [ ] Isolated-world UI + message bridge (`window.postMessage` with nonce)
-- [ ] Currency cache + CF backoff from userscript
+### Phase C — nuts.gg port — **done**
+- [x] MAIN-world WebSocket hook + isolated bridge via `postMessage`
 
-### Phase D — Integration & ship (1 day)
-- [ ] Extension options page: enable/disable autovault per site
-- [ ] Install ping → existing analytics endpoint (if still desired)
-- [ ] Docs: deprecate userscript install path with “use extension” CTA
-- [ ] Staging sign-off: stake skim + nuts skim without Tampermonkey
+### Phase D — Integration — **partial**
+- [x] Floating AutoVault panel (separate from tilt FAB); site label in header
+- [ ] Extension options page toggle per site
+- [ ] Userscript page CTA → extension primary
+- [ ] Staging sign-off checklist
 
 **Estimate:** ~1–1.5 weeks focused solo work.
 
@@ -135,3 +130,4 @@ Stake and nuts share config shape via `chrome.storage.local` (`tc_autovault_conf
 | 2026-05-27 | Do **not** embed full autovault in general sidebar; ship as site-specific content scripts |
 | 2026-05-27 | nuts.gg requires MAIN-world script; stake.us can stay isolated |
 | 2026-05-27 | Keep userscript until extension parity sign-off |
+| 2026-05-27 | Shipped v1: `AutoVaultHost` swaps engines on hostname change (Stake.us ↔ nuts.gg) |

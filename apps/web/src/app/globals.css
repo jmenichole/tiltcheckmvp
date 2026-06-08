@@ -1062,7 +1062,7 @@ body::before {
 
 /* Old Theme Styles */
 body.degen-background {
-  background-color: #07080a !important;
+  background-color: #030405 !important;
   background-image: url('/assets/backgroundglitter.png');
   background-size: cover;
   background-repeat: no-repeat;
@@ -1073,14 +1073,14 @@ body.degen-background {
   color: var(--text-primary);
 }
 
-/* Tint overlay — keeps text readable while letting the glitter show through */
+/* Dark overlay — glitter stays subtle; copy stays high-contrast */
 body.degen-background::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(5, 7, 10, 0.52) 0%, rgba(5, 7, 10, 0.78) 100%),
-    radial-gradient(ellipse 80% 60% at 15% 10%, rgba(23, 195, 178, 0.06), transparent 70%);
+    linear-gradient(180deg, rgba(2, 3, 5, 0.84) 0%, rgba(2, 3, 5, 0.92) 100%),
+    radial-gradient(ellipse 70% 50% at 12% 8%, rgba(23, 195, 178, 0.03), transparent 65%);
   pointer-events: none;
   z-index: 0;
 }

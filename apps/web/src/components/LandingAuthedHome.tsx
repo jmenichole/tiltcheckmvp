@@ -145,34 +145,40 @@ export default function LandingAuthedHome() {
             </div>
           ) : null}
 
-          {loadState === 'authed' ? (
-            <section className="landing-authed-home__steps public-page-section">
-              <div className="public-page-grid public-page-grid--3">
-                {PROTECTION_STEPS.map((item) => (
-                  <article key={item.step} className="public-page-card">
-                    <p className="public-page-card__eyebrow">Step {item.step}</p>
-                    <h3 className="public-page-card__title">{item.title}</h3>
-                    <p className="public-page-card__copy">{item.description}</p>
-                  </article>
-                ))}
-              </div>
-              <div className="public-page-cta-band landing-authed-home__habit">
-                <p className="public-page-panel__eyebrow">{HABIT_LOOP_COPY.eyebrow}</p>
-                <h3 className="public-page-cta-band__title">{HABIT_LOOP_COPY.title}</h3>
-                <p className="public-page-cta-band__copy">{HABIT_LOOP_COPY.body}</p>
-              </div>
-            </section>
-          ) : null}
-
           <p className="landing-authed-home__tertiary">
             <Link href="/settings">Game exclusions</Link>
-            {' · '}
+            <span className="landing-authed-home__tertiary-sep" aria-hidden="true">
+              ·
+            </span>
             <Link href="/casinos">Casino trust</Link>
-            {' · '}
+            <span className="landing-authed-home__tertiary-sep" aria-hidden="true">
+              ·
+            </span>
             <Link href="/bonuses">Bonuses</Link>
           </p>
         </div>
       </section>
+
+      {loadState === 'authed' ? (
+        <section className="public-page-section px-4 landing-authed-home__steps">
+          <div className="landing-shell">
+            <div className="public-page-grid public-page-grid--3">
+              {PROTECTION_STEPS.map((item) => (
+                <article key={item.step} className="public-page-card">
+                  <p className="public-page-card__eyebrow">Step {item.step}</p>
+                  <h3 className="public-page-card__title">{item.title}</h3>
+                  <p className="public-page-card__copy">{item.description}</p>
+                </article>
+              ))}
+            </div>
+            <div className="public-page-cta-band landing-authed-home__habit">
+              <p className="public-page-panel__eyebrow">{HABIT_LOOP_COPY.eyebrow}</p>
+              <h3 className="public-page-cta-band__title">{HABIT_LOOP_COPY.title}</h3>
+              <p className="public-page-cta-band__copy">{HABIT_LOOP_COPY.body}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

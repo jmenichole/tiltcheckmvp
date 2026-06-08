@@ -2,9 +2,12 @@ import { webBaseUrl } from './config.js';
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
+import { GAME_EXCLUSION_PRESETS, type GameExclusionEntry } from '@tiltcheck/shared';
+import type { TiltWarningState } from './tilt-warnings.js';
 
 const CHIP_SIZE = 40;
 const PANEL_Z = 2147483646;
+const INLINE_PRESETS = GAME_EXCLUSION_PRESETS.slice(0, 6);
 
 export type GameMatchInfo = {
   status: GameMatchStatus;
@@ -24,8 +27,11 @@ export type PanelState = {
   riskProfile: RiskProfile;
   sessionCapArmed: boolean;
   sessionCapMinutes: number;
+  gameExclusions: GameExclusionEntry[];
   gameMatch: GameMatchInfo;
   liveStats: LiveStats;
+  tiltWarning: TiltWarningState;
+  saveStatus: string;
   expanded: boolean;
   position: { left: number; top: number };
 };
@@ -35,6 +41,8 @@ export type PanelActions = {
   onSync: () => void;
   onToggleExpand: () => void;
   onPositionChange: (pos: { left: number; top: number }) => void;
+  onSaveLockoutMinutes: (minutes: number) => void;
+  onSaveGameExclusions: (entries: GameExclusionEntry[]) => void;
 };
 
 const RISK_LABELS: Record<RiskProfile, string> = {
@@ -73,6 +81,7 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     'tc_session_token',
     'tc_risk_profile',
     'tc_vault_rules',
+    'tc_game_exclusions',
     'tc_panel_expanded',
   ]);
   const loggedIn = Boolean(stored.tc_session_token);
@@ -87,11 +96,34 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     riskProfile: (stored.tc_risk_profile as RiskProfile) ?? 'moderate',
     sessionCapArmed: loggedIn && stored.tc_demo === false && Boolean(cap),
     sessionCapMinutes: cap?.config?.durationMinutes ?? 5,
+    gameExclusions: (stored.tc_game_exclusions as GameExclusionEntry[]) ?? [],
     expanded: stored.tc_panel_expanded === true,
     position,
     gameMatch: { status: 'clear' },
     liveStats: { clicksIn5s: 0, latestIndicator: null },
+    tiltWarning: { stage: 0, activeIndicator: null },
+    saveStatus: '',
   };
+}
+
+function isPresetEnabled(entries: GameExclusionEntry[], label: string): boolean {
+  return entries.some((e) => e.source === 'preset' && e.label === label);
+}
+
+function togglePreset(entries: GameExclusionEntry[], label: string, patterns: string[]): GameExclusionEntry[] {
+  if (isPresetEnabled(entries, label)) {
+    return entries.filter((e) => !(e.source === 'preset' && e.label === label));
+  }
+  return [
+    ...entries,
+    {
+      id: crypto.randomUUID(),
+      label,
+      matchPatterns: [...patterns],
+      mode: 'block',
+      source: 'preset',
+    },
+  ];
 }
 
 export class TiltCheckSidebar {
@@ -100,6 +132,8 @@ export class TiltCheckSidebar {
   private actions: PanelActions;
   private chipEl: HTMLElement | null = null;
   private panelEl: HTMLElement | null = null;
+  private draftLockoutMinutes = 5;
+  private draftGameExclusions: GameExclusionEntry[] = [];
   private drag: { pointerId: number; startX: number; startY: number; originLeft: number; originTop: number; w: number; h: number } | null =
     null;
 
@@ -107,18 +141,26 @@ export class TiltCheckSidebar {
     this.host = host;
     this.state = initial;
     this.actions = actions;
+    this.draftLockoutMinutes = initial.sessionCapMinutes;
+    this.draftGameExclusions = [...initial.gameExclusions];
     this.render();
     window.addEventListener('resize', () => this.clampAndMove());
   }
 
   update(partial: Partial<PanelState>) {
+    if (partial.sessionCapMinutes !== undefined) {
+      this.draftLockoutMinutes = partial.sessionCapMinutes;
+    }
+    if (partial.gameExclusions !== undefined) {
+      this.draftGameExclusions = [...partial.gameExclusions];
+    }
     this.state = { ...this.state, ...partial };
     this.render();
   }
 
   private clampAndMove() {
     const w = this.state.expanded ? 280 : CHIP_SIZE;
-    const h = this.state.expanded ? 320 : CHIP_SIZE;
+    const h = this.state.expanded ? 380 : CHIP_SIZE;
     const pos = clampPosition(this.state.position.left, this.state.position.top, w, h);
     if (pos.left !== this.state.position.left || pos.top !== this.state.position.top) {
       this.state.position = pos;
@@ -138,6 +180,8 @@ export class TiltCheckSidebar {
     handle.style.cursor = 'grab';
     handle.addEventListener('pointerdown', (e) => {
       if (e.button !== 0) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-tc-no-drag]')) return;
       this.drag = {
         pointerId: e.pointerId,
         startX: e.clientX,
@@ -193,6 +237,15 @@ export class TiltCheckSidebar {
     return `<span style="color:${color}">${ind.type} · ${ind.severity}</span>`;
   }
 
+  private tiltWarningHtml(): string {
+    const { tiltWarning } = this.state;
+    if (!tiltWarning.activeIndicator || tiltWarning.stage === 0) {
+      return '<span style="color:#6b7280">No active warnings</span>';
+    }
+    const color = tiltWarning.stage >= 2 ? '#ff4a4a' : '#f59e0b';
+    return `<span style="color:${color}">Stage ${tiltWarning.stage}: ${tiltWarning.activeIndicator.description}</span>`;
+  }
+
   private render() {
     this.host.innerHTML = '';
     const baseStyle =
@@ -213,6 +266,7 @@ export class TiltCheckSidebar {
         e.preventDefault();
       });
       this.chipEl = chip;
+      this.panelEl = null;
       this.host.appendChild(chip);
       this.applyPosition();
       this.attachDrag(chip, chip, CHIP_SIZE, CHIP_SIZE);
@@ -228,27 +282,35 @@ export class TiltCheckSidebar {
     header.style.cssText =
       'display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:rgba(23,195,178,.08);border-bottom:1px solid rgba(23,195,178,.2);cursor:grab';
     header.innerHTML =
-      '<strong style="font-size:13px;color:#17c3b2">TiltCheck</strong><button type="button" data-tc-minimize style="background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:16px;line-height:1">−</button>';
+      '<strong data-tc-drag-handle style="font-size:13px;color:#17c3b2">TiltCheck</strong><button type="button" data-tc-minimize data-tc-no-drag style="background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:16px;line-height:1;padding:2px 6px">−</button>';
 
     const body = document.createElement('div');
-    body.style.cssText = 'padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px';
+    body.style.cssText = 'padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto';
 
     const account = this.state.loggedIn
       ? `Hi, <strong>${this.state.username ?? 'player'}</strong>`
-      : 'Not connected — <button type="button" data-tc-login style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit;text-decoration:underline">Connect Discord</button>';
+      : 'Not connected — <button type="button" data-tc-login data-tc-no-drag style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit;text-decoration:underline">Connect Discord</button>';
 
     const protection = [
       `Tilt sensitivity: <strong>${RISK_LABELS[this.state.riskProfile]}</strong>`,
       `Touch Grass lockout: ${
         this.state.sessionCapArmed
           ? `<strong>armed (${this.state.sessionCapMinutes} min tab lock)</strong>`
-          : '<span style="color:#6b7280">not set — add lockout time on dashboard</span>'
+          : '<span style="color:#6b7280">not armed — set lockout time below</span>'
       }`,
       this.state.demoMode ? '<span style="color:#f59e0b">Demo mode — warnings only</span>' : '',
       '<span style="color:#6b7280;font-size:10px;line-height:1.4;display:block;margin-top:2px">Tab lock when tilt or blocked games hit — not your casino balance vault.</span>',
     ]
       .filter(Boolean)
       .join('<br/>');
+
+    const presetRows = INLINE_PRESETS.map((preset) => {
+      const checked = isPresetEnabled(this.draftGameExclusions, preset.label);
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:11px;cursor:pointer" data-tc-no-drag>
+        <input type="checkbox" data-tc-preset="${preset.label}" ${checked ? 'checked' : ''} ${this.state.loggedIn ? '' : 'disabled'} />
+        ${preset.label}
+      </label>`;
+    }).join('');
 
     const warnBanner =
       this.state.gameMatch.status === 'warn' || this.state.gameMatch.status === 'demo-banner'
@@ -259,33 +321,78 @@ export class TiltCheckSidebar {
       ${warnBanner}
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Account</div>${account}</section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Protection</div>${protection}</section>
+      <section data-tc-no-drag>
+        <div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Lockout time</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} style="width:56px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />
+          <span style="color:#9ca3af;font-size:11px">min tab lock</span>
+          <button type="button" data-tc-save-lockout style="margin-left:auto;padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:11px" ${this.state.loggedIn ? '' : 'disabled'}>Save</button>
+        </div>
+      </section>
+      <section data-tc-no-drag>
+        <div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game blocks</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;margin-bottom:6px">${presetRows}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button type="button" data-tc-save-games style="padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;cursor:pointer;font:inherit;font-size:11px" ${this.state.loggedIn ? '' : 'disabled'}>Save blocks</button>
+          <button type="button" data-tc-settings-more style="padding:4px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.2);background:transparent;color:#9ca3af;cursor:pointer;font:inherit;font-size:11px">More on web</button>
+        </div>
+      </section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Game match</div>${this.gameMatchHtml()}</section>
+      <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Tilt warnings</div>${this.tiltWarningHtml()}</section>
       <section><div style="font:700 9px/1 ui-monospace,monospace;letter-spacing:.12em;color:#6b7280;text-transform:uppercase;margin-bottom:4px">Live stats</div>
         Clicks (5s): <strong>${this.state.liveStats.clicksIn5s}</strong><br/>
         Latest: ${this.indicatorHtml()}
       </section>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
-        <button type="button" data-tc-settings style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#e6e6e6;cursor:pointer;font:inherit;font-size:11px">Game blocks</button>
-        <button type="button" data-tc-dashboard style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#e6e6e6;cursor:pointer;font:inherit;font-size:11px" title="Set how long Touch Grass locks the tab">Lockout time</button>
-        <button type="button" data-tc-sync style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600" title="Pull game blocks and lockout rules from your account">Refresh rules</button>
+        <button type="button" data-tc-sync data-tc-no-drag style="flex:1;min-width:90px;padding:6px 8px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#17c3b2;color:#0a0c10;cursor:pointer;font:inherit;font-size:11px;font-weight:600" title="Pull game blocks and lockout rules from your account">Refresh rules</button>
       </div>
+      ${this.state.saveStatus ? `<p data-tc-no-drag style="margin:4px 0 0;font-size:11px;color:#9ca3af">${this.state.saveStatus}</p>` : ''}
     `;
 
     panel.appendChild(header);
     panel.appendChild(body);
     this.panelEl = panel;
+    this.chipEl = null;
     this.host.appendChild(panel);
     this.applyPosition();
-    this.attachDrag(panel, header, 280, 320);
 
-    header.querySelector('[data-tc-minimize]')?.addEventListener('click', () => this.actions.onToggleExpand());
+    const dragHandle = header.querySelector('[data-tc-drag-handle]') as HTMLElement | null;
+    if (dragHandle) this.attachDrag(panel, dragHandle, 280, 380);
+
+    const minimizeBtn = header.querySelector('[data-tc-minimize]');
+    minimizeBtn?.addEventListener('pointerdown', (e) => e.stopPropagation());
+    minimizeBtn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.actions.onToggleExpand();
+    });
+
     body.querySelector('[data-tc-login]')?.addEventListener('click', () => this.actions.onLogin());
-    body.querySelector('[data-tc-settings]')?.addEventListener('click', () => {
+    body.querySelector('[data-tc-settings-more]')?.addEventListener('click', () => {
       window.open(`${webBaseUrl()}/settings#game-exclusion`, '_blank');
     });
-    body.querySelector('[data-tc-dashboard]')?.addEventListener('click', () => {
-      window.open(`${webBaseUrl()}/dashboard`, '_blank');
-    });
     body.querySelector('[data-tc-sync]')?.addEventListener('click', () => this.actions.onSync());
+
+    body.querySelector('[data-tc-lockout-min]')?.addEventListener('input', (e) => {
+      const val = Number((e.target as HTMLInputElement).value);
+      if (Number.isFinite(val)) this.draftLockoutMinutes = val;
+    });
+
+    body.querySelector('[data-tc-save-lockout]')?.addEventListener('click', () => {
+      this.actions.onSaveLockoutMinutes(this.draftLockoutMinutes);
+    });
+
+    body.querySelectorAll('[data-tc-preset]').forEach((el) => {
+      el.addEventListener('change', () => {
+        const label = (el as HTMLInputElement).dataset.tcPreset;
+        if (!label) return;
+        const preset = INLINE_PRESETS.find((p) => p.label === label);
+        if (!preset) return;
+        this.draftGameExclusions = togglePreset(this.draftGameExclusions, preset.label, preset.matchPatterns);
+      });
+    });
+
+    body.querySelector('[data-tc-save-games]')?.addEventListener('click', () => {
+      this.actions.onSaveGameExclusions(this.draftGameExclusions);
+    });
   }
 }

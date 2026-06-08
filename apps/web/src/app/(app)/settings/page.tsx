@@ -88,7 +88,21 @@ export default function SettingsPage() {
       method: 'PATCH',
       body: JSON.stringify(settings),
     });
-    setStatus(res.ok ? 'Settings saved.' : 'Save failed — try again.');
+    if (!res.ok) {
+      setStatus('Save failed — try again.');
+      return;
+    }
+    const data = (await res.json()) as { settings?: SettingsState };
+    if (data.settings) {
+      const s = data.settings;
+      setSettings({
+        riskProfile: s.riskProfile ?? 'moderate',
+        notificationsEnabled: s.notificationsEnabled ?? true,
+        demoMode: s.demoMode ?? false,
+        gameExclusions: Array.isArray(s.gameExclusions) ? s.gameExclusions : [],
+      });
+    }
+    setStatus('Settings saved.');
   }
 
   async function handleLogout() {

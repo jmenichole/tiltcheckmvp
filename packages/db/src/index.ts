@@ -64,21 +64,25 @@ export async function upsertUserFromDiscord(input: {
   return mapUser(data);
 }
 
-export async function getUserSettings(userId: string): Promise<UserSettings | null> {
+function defaultUserSettings(userId: string): UserSettings {
+  return {
+    userId,
+    riskProfile: 'moderate',
+    notificationsEnabled: true,
+    demoMode: false,
+    gameExclusions: [],
+    onboardingCompletedAt: null,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+export async function getUserSettings(userId: string): Promise<UserSettings> {
   const db = getSupabaseAdmin();
   if (!db) {
-    return {
-      userId,
-      riskProfile: 'moderate',
-      notificationsEnabled: true,
-      demoMode: false,
-      gameExclusions: [],
-      onboardingCompletedAt: null,
-      updatedAt: new Date().toISOString(),
-    };
+    return defaultUserSettings(userId);
   }
   const { data } = await db.from('user_settings').select('*').eq('user_id', userId).maybeSingle();
-  if (!data) return null;
+  if (!data) return defaultUserSettings(userId);
   return mapUserSettingsRow(data);
 }
 
@@ -98,15 +102,24 @@ function mapUserSettingsRow(data: Record<string, unknown>): UserSettings {
 
 function parseGameExclusions(raw: unknown): GameExclusionEntry[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((entry): entry is GameExclusionEntry => {
-    return (
-      entry &&
-      typeof entry === 'object' &&
-      typeof (entry as GameExclusionEntry).id === 'string' &&
-      typeof (entry as GameExclusionEntry).label === 'string' &&
-      Array.isArray((entry as GameExclusionEntry).matchPatterns)
-    );
-  });
+  return raw
+    .filter((entry): entry is GameExclusionEntry => {
+      return (
+        entry &&
+        typeof entry === 'object' &&
+        typeof (entry as GameExclusionEntry).id === 'string' &&
+        typeof (entry as GameExclusionEntry).label === 'string' &&
+        Array.isArray((entry as GameExclusionEntry).matchPatterns)
+      );
+    })
+    .map((entry) => ({
+      ...entry,
+      mode: entry.mode === 'warn' ? 'warn' : 'block',
+      source:
+        entry.source === 'preset' || entry.source === 'url' || entry.source === 'keywords'
+          ? entry.source
+          : 'keywords',
+    }));
 }
 
 export type UserSettingsPatch = Partial<

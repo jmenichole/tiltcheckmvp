@@ -8,6 +8,25 @@ export type SyncedSettings = {
   notificationsEnabled: boolean;
 };
 
+function normalizeSettings(raw: Partial<SyncedSettings> | undefined | null): SyncedSettings | null {
+  if (!raw) return null;
+  return {
+    riskProfile: raw.riskProfile ?? 'moderate',
+    gameExclusions: Array.isArray(raw.gameExclusions) ? raw.gameExclusions : [],
+    demoMode: Boolean(raw.demoMode),
+    notificationsEnabled: raw.notificationsEnabled !== false,
+  };
+}
+
+export async function applySettingsToStorage(settings: SyncedSettings): Promise<void> {
+  await chrome.storage.local.set({
+    tc_risk_profile: settings.riskProfile,
+    tc_game_exclusions: settings.gameExclusions,
+    tc_demo: settings.demoMode,
+    tc_notifications_enabled: settings.notificationsEnabled,
+  });
+}
+
 export async function syncSettingsToStorage(token: string | null): Promise<SyncedSettings | null> {
   if (!token) return null;
   try {
@@ -17,24 +36,40 @@ export async function syncSettingsToStorage(token: string | null): Promise<Synce
     });
     if (!res.ok) return null;
     const data = (await res.json()) as { settings?: SyncedSettings };
-    if (!data.settings) return null;
+    const settings = normalizeSettings(data.settings);
+    if (!settings) return null;
 
-    const settings: SyncedSettings = {
-      riskProfile: data.settings.riskProfile ?? 'moderate',
-      gameExclusions: Array.isArray(data.settings.gameExclusions) ? data.settings.gameExclusions : [],
-      demoMode: Boolean(data.settings.demoMode),
-      notificationsEnabled: data.settings.notificationsEnabled !== false,
-    };
-
-    await chrome.storage.local.set({
-      tc_risk_profile: settings.riskProfile,
-      tc_game_exclusions: settings.gameExclusions,
-      tc_demo: settings.demoMode,
-      tc_notifications_enabled: settings.notificationsEnabled,
-    });
-
+    await applySettingsToStorage(settings);
     return settings;
   } catch {
     return null;
+  }
+}
+
+export async function pushSettingsToApi(
+  token: string,
+  patch: Partial<Pick<SyncedSettings, 'gameExclusions' | 'riskProfile' | 'demoMode'>>,
+): Promise<{ ok: true; settings: SyncedSettings } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/user/settings`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: err?.error ?? `Save failed (${res.status})` };
+    }
+    const data = (await res.json()) as { settings?: SyncedSettings };
+    const settings = normalizeSettings(data.settings);
+    if (!settings) return { ok: false, error: 'Server returned no settings' };
+    await applySettingsToStorage(settings);
+    return { ok: true, settings };
+  } catch {
+    return { ok: false, error: 'Network error' };
   }
 }

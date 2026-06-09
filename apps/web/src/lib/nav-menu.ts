@@ -7,7 +7,13 @@ export const EXTENSION_INSTALL_HREF = '/extension';
 
 export const NAV_QUICK_LINKS: NavLink[] = [
   { href: '/casinos', label: 'Casino Trust' },
-  { href: '/bonuses', label: 'Bonuses' },
+  { href: '/dashboard', label: 'Dashboard' },
+];
+
+/** Persistent desktop header links (md+). */
+export const NAV_DESKTOP_LINKS: NavLink[] = [
+  { href: '/casinos', label: 'Casino Trust' },
+  { href: '/extension', label: 'Extension' },
   { href: '/dashboard', label: 'Dashboard' },
 ];
 

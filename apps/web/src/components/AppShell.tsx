@@ -25,7 +25,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SiteNav />
-      {children}
+      <div id="main-content">{children}</div>
       <SiteFooter />
     </>
   );

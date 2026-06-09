@@ -74,6 +74,7 @@ if (!excluded) {
       durationMs: cap.durationMinutes * 60 * 1000,
       durationMinutes: cap.durationMinutes,
       futureMeNote: cap.futureMeNote || undefined,
+      hubReason: 'tilt',
     };
   }
 
@@ -86,6 +87,7 @@ if (!excluded) {
       durationMs: cap.durationMinutes * 60 * 1000,
       durationMinutes: cap.durationMinutes,
       futureMeNote: cap.futureMeNote || undefined,
+      hubReason: 'game',
     };
   }
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
+import DashboardTabBar from '@/components/DashboardTabBar';
 import GameExclusionEditor from '@/components/GameExclusionEditor';
 import { apiFetch } from '@/lib/api';
 
@@ -155,7 +156,11 @@ export default function SettingsPage() {
       <main className="public-page text-white settings-page">
         <section className="hero-surface settings-hero">
           <div className="landing-shell">
-            <p className="brand-lead">Loading profile...</p>
+            <span className="brand-eyebrow">Account</span>
+            <h1 className="brand-page-title">Profile &amp; settings</h1>
+            <p className="brand-lead" role="status" aria-live="polite">
+              Loading profile…
+            </p>
           </div>
         </section>
       </main>
@@ -169,6 +174,7 @@ export default function SettingsPage() {
           <span className="brand-eyebrow">Account</span>
           <h1 className="brand-page-title">Profile &amp; settings</h1>
           <p className="brand-lead">Game exclusions, tilt sensitivity, and how hard we nudge you.</p>
+          <DashboardTabBar active="settings" />
         </div>
       </section>
 
@@ -179,7 +185,11 @@ export default function SettingsPage() {
               <div className="settings-avatar" aria-hidden="true">
                 {user?.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={user.avatarUrl} alt="" className="settings-avatar__image" />
+                  <img
+                    src={user.avatarUrl}
+                    alt={`${user?.username ?? 'User'} avatar`}
+                    className="settings-avatar__image"
+                  />
                 ) : (
                   <span className="settings-avatar__initial">{avatarInitial}</span>
                 )}
@@ -230,6 +240,9 @@ export default function SettingsPage() {
 
             <section id="game-exclusion" className="settings-game-exclusion">
               <h3 className="public-page-card__title settings-section-title">Game self-exclusion</h3>
+              <p className="public-page-card__copy settings-auto-save-note">
+                Game blocks save automatically when you edit. Sensitivity and demo mode use Save below.
+              </p>
               <GameExclusionEditor
                 value={settings.gameExclusions}
                 onChange={(gameExclusions) => {

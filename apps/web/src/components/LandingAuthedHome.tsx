@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
-import { HABIT_LOOP_COPY, PROTECTION_STEPS } from '@/lib/protection-steps';
+import { HABIT_LOOP_COPY } from '@/lib/protection-steps';
 import { apiFetch } from '@/lib/api';
 import LandingMarketingHome from '@/components/LandingMarketingHome';
 
@@ -72,7 +72,20 @@ export default function LandingAuthedHome() {
   }, []);
 
   if (loadState === 'fallback') {
-    return <LandingMarketingHome />;
+    return (
+      <>
+        <div className="session-expired-banner" role="status">
+          <p>
+            Your session expired or could not be verified.{' '}
+            <Link href="/login?redirect=/" className="dashboard-link">
+              Log in again
+            </Link>{' '}
+            to see your command center.
+          </p>
+        </div>
+        <LandingMarketingHome />
+      </>
+    );
   }
 
   const capArmed = capMinutes !== null;
@@ -151,10 +164,6 @@ export default function LandingAuthedHome() {
               ·
             </span>
             <Link href="/casinos">Casino trust</Link>
-            <span className="landing-authed-home__tertiary-sep" aria-hidden="true">
-              ·
-            </span>
-            <Link href="/bonuses">Bonuses</Link>
           </p>
         </div>
       </section>
@@ -162,19 +171,15 @@ export default function LandingAuthedHome() {
       {loadState === 'authed' ? (
         <section className="public-page-section px-4 landing-authed-home__steps">
           <div className="landing-shell">
-            <div className="public-page-grid public-page-grid--3">
-              {PROTECTION_STEPS.map((item) => (
-                <article key={item.step} className="public-page-card">
-                  <p className="public-page-card__eyebrow">Step {item.step}</p>
-                  <h3 className="public-page-card__title">{item.title}</h3>
-                  <p className="public-page-card__copy">{item.description}</p>
-                </article>
-              ))}
-            </div>
             <div className="public-page-cta-band landing-authed-home__habit">
               <p className="public-page-panel__eyebrow">{HABIT_LOOP_COPY.eyebrow}</p>
-              <h3 className="public-page-cta-band__title">{HABIT_LOOP_COPY.title}</h3>
+              <h2 className="public-page-cta-band__title">{HABIT_LOOP_COPY.title}</h2>
               <p className="public-page-cta-band__copy">{HABIT_LOOP_COPY.body}</p>
+              <div className="public-page-cta-band__actions mt-4">
+                <Link href="/dashboard" className="btn btn-primary btn-sm">
+                  Open dashboard
+                </Link>
+              </div>
             </div>
           </div>
         </section>

@@ -4,7 +4,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import { EXTENSION_INSTALL_HREF, NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
+import {
+  EXTENSION_INSTALL_HREF,
+  NAV_DESKTOP_LINKS,
+  NAV_MENU_GROUPS,
+  NAV_QUICK_LINKS,
+} from '@/lib/nav-menu';
 
 type NavUser = { username: string; avatarUrl: string | null } | null;
 
@@ -95,11 +100,22 @@ export default function SiteNav() {
 
   return (
     <>
+      <a href="#main-content" className="nav-skip-link">
+        Skip to content
+      </a>
       <header className={`nav-topbar${scrolled ? ' nav-topbar--scrolled' : ''}`}>
         <Link href="/" className="nav-logo">
           <span className="nav-logo-icon">TC</span>
           <span className="nav-logo-text">TILTCHECK</span>
         </Link>
+
+        <nav className="nav-desktop-links" aria-label="Primary">
+          {NAV_DESKTOP_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="nav-desktop-link">
+              {link.label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="nav-topbar-right">
           <Link
@@ -120,10 +136,10 @@ export default function SiteNav() {
           </Link>
           {user ? (
             <Link
-              href="/settings"
+              href="/dashboard"
               className="nav-avatar"
-              aria-label={`${user.username} — profile settings`}
-              title={user.username}
+              aria-label={`${user.username} — dashboard`}
+              title={`${user.username} — dashboard`}
             >
               {user.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

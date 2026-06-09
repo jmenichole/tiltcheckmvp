@@ -78,7 +78,7 @@ export const NAV_QUICK_LINKS: NavLink[] = [
 
 Remove `<Link href="/bonuses">Bonuses</Link>` from `LandingAuthedHome.tsx`.
 
-Remove the bonuses object from `SIDE_QUESTS` in `touch-grass/page.tsx`.
+Touch Grass hub lives in `TouchGrassHub.tsx` (no bonuses card). Task 1 only needs nav/landing/bonuses redirect if not already done.
 
 - [ ] **Step 2: Redirect `/bonuses`**
 
@@ -506,7 +506,7 @@ git commit -m "feat(extension): vault pledge config helpers"
 
 - [ ] **Step 1: Overlay module**
 
-`showVaultPledgeOverlay(config)` — full-screen `#000`, large countdown to `releaseAt`, note, disclosure footer, optional `onCancel` not exposed (cancel web-only).
+`showVaultPledgeOverlay(config)` — full-screen `#000`, large countdown to `releaseAt`, note, disclosure footer, optional `onCancel` not exposed (cancel web-only). On show, call `openTouchGrassHub('pledge', { until: releaseAt, note })` from `touch-grass-link.ts` (same pattern as tilt lockout in `enforcement.ts`).
 
 `dismissVaultPledgeOverlay()` — remove overlay.
 

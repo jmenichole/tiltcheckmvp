@@ -119,7 +119,12 @@ export function OnboardingWizard({
   }
 
   return (
-    <div className="public-page-card onboarding-wizard" role="dialog" aria-labelledby="onboarding-title">
+    <div
+      className="public-page-card onboarding-wizard"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={`onboarding-title-${step}`}
+    >
       <div className="onboarding-wizard__header">
         <span className="brand-eyebrow">
           Setup · Step {step + 1} of {steps.length}
@@ -131,7 +136,7 @@ export function OnboardingWizard({
 
       {step === 0 && (
         <>
-          <h2 id="onboarding-title" className="public-page-card__title">
+          <h2 id="onboarding-title-0" className="public-page-card__title">
             Welcome to TiltCheck
           </h2>
           <p className="public-page-card__copy">
@@ -146,7 +151,7 @@ export function OnboardingWizard({
 
       {step === 1 && (
         <>
-          <h2 id="onboarding-title" className="public-page-card__title">
+          <h2 id="onboarding-title-1" className="public-page-card__title">
             Block problem games
           </h2>
           <p className="public-page-card__copy">
@@ -196,7 +201,7 @@ export function OnboardingWizard({
 
       {step === 2 && (
         <>
-          <h2 id="onboarding-title" className="public-page-card__title">
+          <h2 id="onboarding-title-2" className="public-page-card__title">
             Tilt sensitivity
           </h2>
           <p className="public-page-card__copy">How early should we nudge you when pacing shifts?</p>
@@ -233,7 +238,7 @@ export function OnboardingWizard({
 
       {step === 3 && (
         <>
-          <h2 id="onboarding-title" className="public-page-card__title">
+          <h2 id="onboarding-title-3" className="public-page-card__title">
             Session cap
           </h2>
           <p className="public-page-card__copy">
@@ -268,7 +273,7 @@ export function OnboardingWizard({
 
       {step === 4 && (
         <>
-          <h2 id="onboarding-title" className="public-page-card__title">
+          <h2 id="onboarding-title-4" className="public-page-card__title">
             You are set
           </h2>
           <p className="public-page-card__copy">

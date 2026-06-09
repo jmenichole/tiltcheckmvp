@@ -24,6 +24,9 @@ export default function LandingHeroActions() {
         >
           CHECK CASINO TRUST
         </Link>
+        <Link href="/login?redirect=/dashboard" className="btn btn-ghost">
+          ALREADY LINKED? LOG IN
+        </Link>
       </div>
 
       <div className="hero-actions hero-actions--mobile">
@@ -44,6 +47,9 @@ export default function LandingHeroActions() {
           data-funnel-label="Check Casino Trust"
         >
           CHECK CASINO TRUST
+        </Link>
+        <Link href="/login?redirect=/dashboard" className="btn btn-ghost">
+          LOG IN
         </Link>
         <a
           href={DISCORD_URL}

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
 import { normalizeSessionCapConfig, type LockoutStyle } from '@tiltcheck/shared';
 import DashboardProtectionAside from '@/components/DashboardProtectionAside';
+import DashboardTabBar from '@/components/DashboardTabBar';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
 
@@ -29,6 +30,7 @@ export default function DashboardPage() {
   const [riskProfile, setRiskProfile] = useState<'conservative' | 'moderate' | 'degen'>('moderate');
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const sessionCapRule = vaultRules.find((r) => r.ruleType === 'session_cap');
   const capSynced = Boolean(sessionCapRule?.enabled);
@@ -55,12 +57,28 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    apiFetch('/auth/me')
-      .then((r) => r.json())
-      .then((data) => setUser(data.user));
-    refreshVault();
-    refreshSettings().finally(() => setSettingsLoaded(true));
+    Promise.all([
+      apiFetch('/auth/me')
+        .then((r) => r.json())
+        .then((data) => setUser(data.user)),
+      refreshVault(),
+      refreshSettings(),
+    ]).finally(() => {
+      setSettingsLoaded(true);
+      setPageLoading(false);
+    });
   }, []);
+
+  async function skipOnboarding() {
+    const res = await apiFetch('/user/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ onboardingCompletedAt: new Date().toISOString() }),
+    });
+    if (res.ok) {
+      setShowWizard(false);
+      setOnboardingComplete(true);
+    }
+  }
 
   async function refreshVault() {
     const res = await apiFetch('/vault');
@@ -100,6 +118,22 @@ export default function DashboardPage() {
     }
   }
 
+  if (pageLoading) {
+    return (
+      <main className="public-page text-white dashboard-page">
+        <section className="hero-surface dashboard-hero">
+          <div className="landing-shell">
+            <span className="brand-eyebrow">Your command center</span>
+            <h1 className="brand-page-title">Dashboard</h1>
+            <p className="brand-lead" role="status" aria-live="polite">
+              Loading your line…
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="public-page text-white dashboard-page">
       <section className="hero-surface dashboard-hero">
@@ -112,14 +146,7 @@ export default function DashboardPage() {
               : 'Block problem games in Settings. Set your cap here. The extension enforces both on casino tabs.'}
           </p>
 
-          <div className="dashboard-tab-bar" role="tablist" aria-label="Dashboard sections">
-            <button type="button" role="tab" aria-selected className="dashboard-tab dashboard-tab--active">
-              Vault
-            </button>
-            <Link href="/settings" className="dashboard-tab dashboard-tab--link">
-              Profile settings
-            </Link>
-          </div>
+          <DashboardTabBar active="vault" />
         </div>
       </section>
 
@@ -136,7 +163,7 @@ export default function DashboardPage() {
                 void refreshVault();
                 void refreshSettings();
               }}
-              onSkip={() => setShowWizard(false)}
+              onSkip={() => void skipOnboarding()}
             />
           ) : null}
 

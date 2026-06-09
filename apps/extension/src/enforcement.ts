@@ -1,7 +1,11 @@
 /** Full-viewport Touch Grass lockout — undismissable until timer ends. */
 
-import { webBaseUrl } from './config.js';
 import { pactLineHtml, pactNoteHtml, triggerCardHtml } from './pact-ui.js';
+import {
+  openTouchGrassHub,
+  touchGrassUrl,
+  type TouchGrassReason,
+} from './touch-grass-link.js';
 
 const LOCKDOWN_ROOT_ID = 'tiltcheck-lockdown-root';
 const TIMER_ID = 'lockdown-timer';
@@ -14,6 +18,8 @@ export type TouchGrassOptions = {
   durationMs: number;
   durationMinutes: number;
   futureMeNote?: string;
+  /** Hub context for /touch-grass?reason= — defaults to tilt */
+  hubReason?: TouchGrassReason;
 };
 
 export function isTouchGrassActive(): boolean {
@@ -44,6 +50,14 @@ export function triggerTouchGrassTimeout(opts: TouchGrassOptions): void {
   overlayActive = true;
   blockBettingUI(true);
 
+  const endsAt = Date.now() + opts.durationMs;
+  const hubReason = opts.hubReason ?? 'tilt';
+  const untilIso = new Date(endsAt).toISOString();
+  const hubUrl = touchGrassUrl(hubReason, {
+    until: untilIso,
+    note: opts.futureMeNote,
+  });
+
   const root = document.createElement('div');
   root.id = LOCKDOWN_ROOT_ID;
   root.style.cssText =
@@ -61,12 +75,15 @@ export function triggerTouchGrassTimeout(opts: TouchGrassOptions): void {
     <p style="margin:.75rem 0 0;font-size:1.05rem;font-weight:600;color:#f3f4f6">Tab locked before the hole got deeper.</p>
     ${triggerCardHtml(opts.triggerReason, opts.triggerInsight)}
     <p id="${TIMER_ID}" style="margin:1.5rem 0 0;font:700 clamp(3rem,12vw,5rem)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#17c3b2;animation:tiltcheck-timer-pulse 2.5s ease-in-out infinite">--:--</p>
-    <p style="margin:1rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Timer hits zero — table unlocks. <a href="${webBaseUrl()}/touch-grass" target="_blank" rel="noopener" style="color:#17c3b2">Break ideas</a></p>
+    <p style="margin:1rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Timer hits zero — table unlocks.</p>
+    <a href="${hubUrl}" target="_blank" rel="noopener" style="display:inline-flex;margin-top:1.25rem;padding:.85rem 1.75rem;border-radius:999px;background:#17c3b2;color:#0a0c10;font:700 14px/1 system-ui,sans-serif;text-decoration:none;letter-spacing:.02em">Open break hub →</a>
+    <p style="margin:1rem 0 0;max-width:20rem;font-size:12px;color:#6b7280;line-height:1.45">We opened Touch Grass in a new tab. Use it instead of watching this timer.</p>
   `;
   document.documentElement.appendChild(root);
 
+  openTouchGrassHub(hubReason, { until: untilIso, note: opts.futureMeNote });
+
   const timerEl = root.querySelector(`#${TIMER_ID}`);
-  const endsAt = Date.now() + opts.durationMs;
 
   const tick = () => {
     const remaining = Math.max(0, endsAt - Date.now());
@@ -85,6 +102,8 @@ export function triggerTouchGrassTimeout(opts: TouchGrassOptions): void {
   const interval = window.setInterval(tick, 250);
 
   const stop = (e: Event) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest('a[href]')) return;
     e.preventDefault();
     e.stopPropagation();
   };

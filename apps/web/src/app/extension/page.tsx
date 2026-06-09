@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import AuthAwareLink from '@/components/AuthAwareLink';
 
 const setupSteps = [
   {
@@ -36,20 +37,24 @@ export default function ExtensionPage() {
           </p>
           <div className="hero-actions">
             <a
-              href="https://chromewebstore.google.com"
+              href="https://chromewebstore.google.com/search/TiltCheck"
               className="btn btn-primary"
               target="_blank"
               rel="noopener noreferrer"
             >
               CHROME WEB STORE
             </a>
-            <Link href="/login" className="btn btn-secondary">
+            <Link href="/login?redirect=/extension" className="btn btn-secondary">
               CONNECT DISCORD
             </Link>
-            <Link href="/settings" className="btn btn-ghost">
+            <AuthAwareLink href="/settings#game-exclusion" className="btn btn-ghost" loginLabel="SIGN IN FOR GAME BLOCKS">
               GAME EXCLUSIONS
-            </Link>
+            </AuthAwareLink>
           </div>
+          <p className="hero-privacy-guarantee mt-3">
+            Store listing may still be pending — search &ldquo;TiltCheck&rdquo; or load unpacked from this
+            repo until published.
+          </p>
         </div>
       </section>
 
@@ -78,9 +83,9 @@ export default function ExtensionPage() {
             Logged out? The extension still detects tilt locally. Sign in to sync game exclusions, tilt
             sensitivity, and your session cap — enforcement follows you on every casino tab.
           </p>
-          <Link href="/dashboard" className="btn btn-ghost btn-sm mt-4">
+          <AuthAwareLink href="/dashboard" className="btn btn-ghost btn-sm mt-4" loginLabel="SIGN IN FOR DASHBOARD">
             Open dashboard
-          </Link>
+          </AuthAwareLink>
         </div>
       </section>
     </main>

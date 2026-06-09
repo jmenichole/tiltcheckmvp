@@ -58,9 +58,14 @@ export default function CasinosPage() {
           <p className="landing-hero-subtitle">
             Live feed: {liveSource}. Static grades always available when API is down.
           </p>
+          <label htmlFor="casino-search" className="sr-only">
+            Search casinos
+          </label>
           <input
+            id="casino-search"
             className="w-full max-w-md mt-4 px-3 py-2 bg-black/40 border border-white/10 rounded"
             placeholder="Search casinos..."
+            aria-label="Search casinos by name"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -85,7 +90,28 @@ export default function CasinosPage() {
         </div>
       </section>
       <section className="public-page-section px-4">
-        <div className="landing-shell public-page-grid public-page-grid--3">
+        <div className="landing-shell">
+          {filtered.length === 0 ? (
+            <div className="public-page-card py-16 text-center">
+              <p className="public-page-card__eyebrow">No matches</p>
+              <h2 className="public-page-card__title">No casinos match that search</h2>
+              <p className="public-page-card__copy max-w-md mx-auto">
+                Try a shorter name, clear the category filter, or browse all casinos.
+              </p>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm mt-4"
+                onClick={() => {
+                  setQuery('');
+                  setCategory('All');
+                  setPage(1);
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+        <div className="public-page-grid public-page-grid--3">
           {paged.map((casino) => {
             const live = findLiveTrustScore(casino, liveScores);
             const score = live?.currentScore ?? casino.score;
@@ -112,26 +138,30 @@ export default function CasinosPage() {
             );
           })}
         </div>
-        <div className="flex gap-2 justify-center mt-6">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            disabled={currentPage <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            Prev
-          </button>
-          <span className="text-sm text-gray-400 self-center">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            disabled={currentPage >= totalPages}
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          >
-            Next
-          </button>
+          )}
+        {filtered.length > 0 ? (
+          <div className="flex gap-2 justify-center mt-6">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={currentPage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Prev
+            </button>
+            <span className="text-sm text-gray-400 self-center">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
         </div>
       </section>
     </main>

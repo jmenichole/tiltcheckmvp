@@ -104,7 +104,7 @@ Extension reads active `vault_pledge` where `status === 'active'` and `releaseAt
 |-------|----------|
 | **Pledge watcher** (new module) | Poll synced rules; if active pledge on current site, set `pledgeActive` flag |
 | **Withdraw guard** | `MutationObserver` + capture-phase listeners on vault withdraw controls (Stake/nuts DOM selectors — maintain per site) |
-| **Block UX** | Full-screen opaque overlay (reuse friction/tilt overlay patterns): countdown, note, “Past you pledged until {time}” |
+| **Block UX** | Full-screen opaque overlay (reuse friction/tilt overlay patterns): countdown, note, “Past you pledged until {time}”; **auto-open** `/touch-grass?reason=pledge&until=…` in a new tab (same as tilt/game lockouts) |
 | **AutoVault** | Unchanged; composable — skim during play, pledge locks withdraw after |
 
 **Not in v1:** programmatic prevent of GraphQL withdraw (no request interception); DOM + UX block only.
@@ -124,7 +124,7 @@ Extension reads active `vault_pledge` where `status === 'active'` and `releaseAt
 |------|--------|
 | `NAV_QUICK_LINKS` | Remove Bonuses |
 | `LandingAuthedHome` | Remove Bonuses link |
-| `touch-grass/page.tsx` | Remove bonuses side quest |
+| `touch-grass` hub | Redesigned break page; context via `?reason=tilt\|pledge\|game`; bonuses side quest removed |
 | `/bonuses` | `redirect('/dashboard')` or `redirect('/')` |
 | API `GET /bonuses` | Keep (dormant); no web links |
 | `BonusGrid.tsx`, `bonuses/page.tsx` | Keep files or delete — prefer redirect + dead code removal in implementation plan |

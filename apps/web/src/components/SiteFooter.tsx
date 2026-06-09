@@ -8,6 +8,8 @@ export default function SiteFooter() {
           <div className="footer-bottom-links">
             <Link href="/extension">Extension</Link>
             <Link href="/casinos">Casino Trust</Link>
+            <Link href="/dashboard">Dashboard</Link>
+            <Link href="/settings">Settings</Link>
             <a href="https://discord.gg/gdBsEJfCar" target="_blank" rel="noopener noreferrer">
               Discord
             </a>

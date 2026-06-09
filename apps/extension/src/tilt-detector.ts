@@ -5,6 +5,7 @@ export interface TiltIndicator {
   severity: 'low' | 'medium' | 'high' | 'critical';
   confidence: number;
   description: string;
+  metricValue?: number;
 }
 
 type ProfileThresholds = {
@@ -102,6 +103,7 @@ export class TiltDetector {
       severity,
       confidence: 0.8,
       description: 'Click spam — pace is climbing.',
+      metricValue: count,
     };
   }
 
@@ -119,6 +121,7 @@ export class TiltDetector {
         severity: lossSev,
         confidence: 0.75,
         description: 'Loss streak heating up.',
+        metricValue: recentLosses,
       });
     }
     return indicators;

@@ -1,5 +1,6 @@
 import { matchGameExclusion, normalizeHaystack } from '@tiltcheck/shared';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
+import type { TouchGrassOptions } from './enforcement.js';
 import { triggerTouchGrassTimeout } from './enforcement.js';
 
 export type GameMatchStatus = 'clear' | 'warn' | 'blocked' | 'demo-banner';
@@ -15,6 +16,7 @@ export type GameExclusionWatcherOptions = {
   getDemoMode: () => boolean;
   getLoggedIn: () => boolean;
   getBlockDurationMs: () => number;
+  buildTouchGrassOpts: (match: GameExclusionEntry) => TouchGrassOptions;
 };
 
 const WARN_ESCALATE_MS = 10_000;
@@ -88,9 +90,8 @@ export class GameExclusionWatcher {
     this.blocked = true;
     this.resetWarn();
 
-    const reason = `${match.label} is on your no-play list — tab locked before the tilt got worse.`;
     if (!this.options.getDemoMode() && this.options.getLoggedIn()) {
-      triggerTouchGrassTimeout(reason, this.options.getBlockDurationMs());
+      triggerTouchGrassTimeout(this.options.buildTouchGrassOpts(match));
     }
 
     this.emit({ matched: match, status: 'blocked' });

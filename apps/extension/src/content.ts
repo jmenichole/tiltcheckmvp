@@ -5,7 +5,7 @@ import {
   loadInitialPanelState,
   type PanelState,
 } from './sidebar.js';
-import { sessionCapDurationMs, pushSessionCapMinutes, type VaultRuleSnapshot } from './vault-sync.js';
+import { sessionCapDurationMs, getSessionCapConfig, pushSessionCapMinutes, type VaultRuleSnapshot } from './vault-sync.js';
 import { GameExclusionWatcher } from './game-exclusion-watcher.js';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
 import { resolveApiBaseUrl } from './config.js';
@@ -19,7 +19,9 @@ import {
   setAutoVaultSidebarMount,
   startAutoVaultIfSupported,
 } from './autovault/bootstrap.js';
+import { formatGameBlockEducation, formatTiltEducation } from './tilt-education.js';
 import { dismissPageToast, showPageToast } from './page-toast.js';
+import type { TouchGrassOptions } from './enforcement.js';
 
 const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
 
@@ -46,11 +48,39 @@ if (!excluded) {
   let panelWidth = 220;
   let panelHeight = 300;
   let userCollapsedPanel = false;
+  let userManuallyExpandedPanel = false;
+  let panelAutoExpandedByWarn = false;
   let saveStatus = '';
 
   const detector = new TiltDetector(riskProfile);
   const warningEscalation = new TiltWarningEscalation();
   let sidebar: TiltCheckSidebar | null = null;
+
+  function buildTouchGrassOptsForIndicator(
+    indicator: ReturnType<TiltDetector['analyze']>[number],
+  ): TouchGrassOptions {
+    const cap = getSessionCapConfig(vaultRules);
+    const education = formatTiltEducation(indicator, riskProfile);
+    return {
+      triggerReason: education.triggerCard,
+      triggerInsight: education.insightLine,
+      durationMs: cap.durationMinutes * 60 * 1000,
+      durationMinutes: cap.durationMinutes,
+      futureMeNote: cap.futureMeNote || undefined,
+    };
+  }
+
+  function buildTouchGrassOptsForGame(match: GameExclusionEntry): TouchGrassOptions {
+    const cap = getSessionCapConfig(vaultRules);
+    const education = formatGameBlockEducation(match.label);
+    return {
+      triggerReason: education.triggerCard,
+      triggerInsight: education.insightLine,
+      durationMs: cap.durationMinutes * 60 * 1000,
+      durationMinutes: cap.durationMinutes,
+      futureMeNote: cap.futureMeNote || undefined,
+    };
+  }
 
   const gameWatcher = new GameExclusionWatcher({
     onStateChange: (state) => {
@@ -81,16 +111,22 @@ if (!excluded) {
       });
       if (state.status === 'warn' && !panelExpanded && !userCollapsedPanel) {
         panelExpanded = true;
-        chrome.storage.local.set({ tc_panel_expanded: true });
+        panelAutoExpandedByWarn = true;
         sidebar?.update({ expanded: true });
       }
       if (state.status === 'clear') {
         userCollapsedPanel = false;
+        if (panelAutoExpandedByWarn && !panelAlwaysOn && !userManuallyExpandedPanel && panelExpanded) {
+          panelExpanded = false;
+          sidebar?.update({ expanded: false });
+        }
+        panelAutoExpandedByWarn = false;
       }
     },
     getDemoMode: () => demoMode,
     getLoggedIn: () => loggedIn,
     getBlockDurationMs: () => sessionCapDurationMs(vaultRules),
+    buildTouchGrassOpts: buildTouchGrassOptsForGame,
   });
 
   function updateLiveStats(indicators: ReturnType<TiltDetector['analyze']>) {
@@ -104,14 +140,15 @@ if (!excluded) {
   }
 
   function buildPanelState(base: Partial<PanelState>): PanelState {
-    const cap = vaultRules.find((r) => r.ruleType === 'session_cap' && r.enabled);
+    const cap = getSessionCapConfig(vaultRules);
     return {
       loggedIn,
       demoMode,
       username: base.username,
       riskProfile,
       sessionCapArmed: enforcementEnabled,
-      sessionCapMinutes: cap?.config?.durationMinutes ?? 5,
+      sessionCapMinutes: cap.durationMinutes,
+      sessionCapLockoutStyle: cap.lockoutStyle,
       gameExclusions,
       gameMatch: base.gameMatch ?? { status: 'clear' },
       liveStats: base.liveStats ?? { clicksIn5s: 0, latestIndicator: null },
@@ -135,6 +172,7 @@ if (!excluded) {
     const initial = await loadInitialPanelState();
     panelAlwaysOn = initial.alwaysOn ?? false;
     panelExpanded = initial.expanded ?? false;
+    userManuallyExpandedPanel = panelAlwaysOn || panelExpanded;
     panelWidth = initial.panelWidth ?? 220;
     panelHeight = initial.panelHeight ?? 300;
     riskProfile = initial.riskProfile ?? 'moderate';
@@ -159,20 +197,40 @@ if (!excluded) {
       },
       onToggleExpand: () => {
         panelExpanded = !panelExpanded;
-        if (!panelExpanded) userCollapsedPanel = true;
-        chrome.storage.local.set({ tc_panel_expanded: panelExpanded });
+        if (panelExpanded) {
+          userManuallyExpandedPanel = true;
+          userCollapsedPanel = false;
+          panelAutoExpandedByWarn = false;
+        } else {
+          userManuallyExpandedPanel = false;
+          userCollapsedPanel = true;
+        }
+        if (!panelAlwaysOn) {
+          chrome.storage.local.set({ tc_panel_expanded: panelExpanded });
+        }
         sidebar?.update({ expanded: panelExpanded });
       },
       onToggleAlwaysOn: () => {
         panelAlwaysOn = !panelAlwaysOn;
         if (panelAlwaysOn) {
           panelExpanded = true;
+          userManuallyExpandedPanel = true;
           userCollapsedPanel = false;
+          panelAutoExpandedByWarn = false;
+          chrome.storage.local.set({
+            tc_panel_always_on: true,
+            tc_panel_expanded: true,
+          });
+        } else {
+          panelExpanded = false;
+          userManuallyExpandedPanel = false;
+          panelAutoExpandedByWarn = false;
+          userCollapsedPanel = false;
+          chrome.storage.local.set({
+            tc_panel_always_on: false,
+            tc_panel_expanded: false,
+          });
         }
-        chrome.storage.local.set({
-          tc_panel_always_on: panelAlwaysOn,
-          tc_panel_expanded: panelExpanded,
-        });
         sidebar?.update({ alwaysOn: panelAlwaysOn, expanded: panelExpanded });
       },
       onLayoutChange: (layout) => {
@@ -319,16 +377,19 @@ if (!excluded) {
     if (action === 'warn') {
       const stage = warningEscalation.getState().stage;
       if (stage === 1 || stage === 2) {
-        showTiltWarningBanner(indicator, stage, demoMode);
+        const cap = getSessionCapConfig(vaultRules);
+        const education = formatTiltEducation(indicator, riskProfile);
+        showTiltWarningBanner(education, stage, demoMode, cap.durationMinutes);
       }
       return;
     }
 
     dismissTiltWarningBanner();
-    const durationMs = sessionCapDurationMs(vaultRules);
+    const cap = getSessionCapConfig(vaultRules);
+    const durationMs = cap.durationMinutes * 60 * 1000;
     touchGrassCooldownUntil = Date.now() + durationMs + 5000;
     warningEscalation.reset();
-    triggerTouchGrassTimeout(indicator.description, durationMs);
+    triggerTouchGrassTimeout(buildTouchGrassOptsForIndicator(indicator));
     chrome.runtime.sendMessage({ type: 'enforcement-fired', indicator: indicator.type }).catch(() => {});
     sidebar?.update({ tiltWarning: warningEscalation.getState() });
   }

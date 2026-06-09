@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
+import { normalizeSessionCapConfig, type LockoutStyle } from '@tiltcheck/shared';
 import DashboardProtectionAside from '@/components/DashboardProtectionAside';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
@@ -11,13 +12,16 @@ interface VaultRule {
   id: string;
   ruleType: string;
   enabled: boolean;
-  config: { durationMinutes?: number };
+  config: Record<string, unknown>;
 }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<{ username: string; avatarUrl: string | null } | null>(null);
   const [vaultRules, setVaultRules] = useState<VaultRule[]>([]);
-  const [sessionCapMinutes, setSessionCapMinutes] = useState(5);
+  const [sessionCapMinutes, setSessionCapMinutes] = useState(10);
+  const [lockoutStyle, setLockoutStyle] = useState<LockoutStyle>('friction_first');
+  const [snoozeEnabled, setSnoozeEnabled] = useState(false);
+  const [futureMeNote, setFutureMeNote] = useState('');
   const [vaultStatus, setVaultStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [vaultError, setVaultError] = useState('');
   const [showWizard, setShowWizard] = useState(false);
@@ -27,7 +31,15 @@ export default function DashboardPage() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   const sessionCapRule = vaultRules.find((r) => r.ruleType === 'session_cap');
-  const capSynced = Boolean(sessionCapRule?.enabled && sessionCapRule.config?.durationMinutes);
+  const capSynced = Boolean(sessionCapRule?.enabled);
+
+  function applyCapConfig(raw: Record<string, unknown> | undefined) {
+    const cap = normalizeSessionCapConfig(raw ?? {});
+    setSessionCapMinutes(cap.durationMinutes);
+    setLockoutStyle(cap.lockoutStyle);
+    setSnoozeEnabled(cap.snoozeEnabled);
+    setFutureMeNote(cap.futureMeNote);
+  }
 
   useEffect(() => {
     apiFetch('/auth/me')
@@ -55,20 +67,26 @@ export default function DashboardPage() {
     const data = await res.json();
     setVaultRules(data.rules ?? []);
     const cap = (data.rules as VaultRule[] | undefined)?.find((r) => r.ruleType === 'session_cap');
-    if (cap?.config?.durationMinutes) {
-      setSessionCapMinutes(cap.config.durationMinutes);
+    if (cap?.enabled) {
+      applyCapConfig(cap.config);
     }
   }
 
-  async function saveSessionCap() {
+  async function saveMyLine() {
     setVaultStatus('saving');
     setVaultError('');
+    const config = normalizeSessionCapConfig({
+      durationMinutes: sessionCapMinutes,
+      lockoutStyle,
+      snoozeEnabled,
+      futureMeNote,
+    });
     const res = await apiFetch('/vault', {
       method: 'POST',
       body: JSON.stringify({
         ruleType: 'session_cap',
         enabled: true,
-        config: { durationMinutes: sessionCapMinutes },
+        config,
       }),
     });
     if (res.ok) {
@@ -124,11 +142,11 @@ export default function DashboardPage() {
               <div className="dashboard-main">
                 <div className="public-page-section-heading">
                   <div>
-                    <span className="brand-eyebrow">Touch Grass lockout</span>
-                    <h2 className="public-page-section-heading__title">Set your walk-away line</h2>
+                    <span className="brand-eyebrow">Past you pact</span>
+                    <h2 className="public-page-section-heading__title">My Line</h2>
                     <p className="public-page-section-heading__copy brand-lead">
-                      Session cap minutes apply to Touch Grass lockouts — tilt critical or opening a game
-                      you blocked.
+                      Your walk-away pact — lockout length, how hard the tab stops, and a note from past you.
+                      TiltCheck enforces what you saved here.
                     </p>
                   </div>
                 </div>
@@ -136,7 +154,8 @@ export default function DashboardPage() {
                 <div className="public-page-card public-page-card--accent dashboard-cap-card">
                   <h3 className="public-page-card__title mt-0">Session cap</h3>
                   <p className="public-page-card__copy">
-                    Minutes of Touch Grass lockout when tilt hits critical. No negotiating mid-rage.
+                    Minutes of Touch Grass when tilt hits critical or you open a blocked game. Past you set
+                    this — not TiltCheck judging you.
                   </p>
 
                   <div className="dashboard-field">
@@ -154,23 +173,84 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  <div className="dashboard-field">
+                    <label htmlFor="lockout-style">Lockout style</label>
+                    <select
+                      id="lockout-style"
+                      value={lockoutStyle}
+                      onChange={(e) => {
+                        setLockoutStyle(e.target.value as LockoutStyle);
+                        if (vaultStatus === 'success') setVaultStatus('idle');
+                      }}
+                    >
+                      <option value="friction_first">Friction first (recommended)</option>
+                      <option value="hard_stop">Hard stop — straight to Touch Grass</option>
+                    </select>
+                  </div>
+
+                  <div className="dashboard-field">
+                    <label className="dashboard-field-label">
+                      <input
+                        type="checkbox"
+                        checked={snoozeEnabled}
+                        onChange={(e) => {
+                          setSnoozeEnabled(e.target.checked);
+                          if (vaultStatus === 'success') setVaultStatus('idle');
+                        }}
+                      />{' '}
+                      Allow one snooze per session (opt-in)
+                    </label>
+                    <p className="public-page-card__copy" style={{ marginTop: '0.35rem' }}>
+                      When enabled, the first critical hit can show a snooze instead of an immediate lockout.
+                      Extension support ships in the next phase.
+                    </p>
+                  </div>
+
+                  <div className="dashboard-field">
+                    <label htmlFor="future-me-note">Note from past you (optional, 140 chars)</label>
+                    <textarea
+                      id="future-me-note"
+                      maxLength={140}
+                      rows={3}
+                      value={futureMeNote}
+                      placeholder="e.g. You said no chasing after 3 reds — walk."
+                      onChange={(e) => {
+                        setFutureMeNote(e.target.value);
+                        if (vaultStatus === 'success') setVaultStatus('idle');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(23,195,178,.35)',
+                        background: '#12161e',
+                        color: '#e6e6e6',
+                        font: 'inherit',
+                        resize: 'vertical',
+                      }}
+                    />
+                    <p className="public-page-card__copy" style={{ marginTop: '0.35rem' }}>
+                      {futureMeNote.length}/140 — shown on Touch Grass lockout, only to you.
+                    </p>
+                  </div>
+
                   <button
                     type="button"
                     className="btn btn-primary btn-sm"
-                    onClick={saveSessionCap}
+                    onClick={saveMyLine}
                     disabled={vaultStatus === 'saving'}
                   >
-                    {vaultStatus === 'saving' ? 'Saving...' : 'Save session cap'}
+                    {vaultStatus === 'saving' ? 'Saving...' : 'Save My Line'}
                   </button>
 
                   {vaultStatus === 'success' && (
                     <div className="dashboard-status dashboard-status--success" role="status">
                       <p className="dashboard-status__title">
-                        {sessionCapMinutes} minute lockout is live
+                        {sessionCapMinutes} min line is live
                       </p>
                       <p className="dashboard-status__copy">
                         Vault saved. Extension syncs on your next casino tab — Discord connected,
-                        extension installed. Critical tilt → Touch Grass.
+                        extension installed. Critical tilt → Touch Grass with your pact copy.
                       </p>
                     </div>
                   )}
@@ -187,8 +267,8 @@ export default function DashboardPage() {
                   <div className="public-page-meta-strip mt-2">
                     <span className={capSynced ? 'dashboard-sync-ready' : ''}>
                       {capSynced
-                        ? `Vault ready — ${sessionCapRule?.config?.durationMinutes ?? sessionCapMinutes}m cap on API`
-                        : 'No cap saved yet'}
+                        ? `Vault ready — ${sessionCapRule?.config?.durationMinutes ?? sessionCapMinutes}m line on API`
+                        : 'No line saved yet'}
                     </span>
                     <span className="public-page-meta-strip__separator">|</span>
                     <span>
@@ -218,7 +298,13 @@ export default function DashboardPage() {
               <DashboardProtectionAside
                 riskProfile={riskProfile}
                 gameExclusions={gameExclusions}
-                capMinutes={sessionCapRule?.config?.durationMinutes ?? (capSynced ? sessionCapMinutes : null)}
+                capMinutes={
+                  sessionCapRule?.enabled
+                    ? normalizeSessionCapConfig(sessionCapRule.config ?? {}).durationMinutes
+                    : capSynced
+                      ? sessionCapMinutes
+                      : null
+                }
                 capSynced={capSynced}
                 onboardingComplete={onboardingComplete}
               />

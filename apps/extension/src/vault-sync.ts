@@ -1,9 +1,10 @@
+import { normalizeSessionCapConfig, type SessionCapConfig } from '@tiltcheck/shared';
 import { apiBaseUrl } from './config.js';
 
 export interface VaultRuleSnapshot {
   ruleType: string;
   enabled: boolean;
-  config: { durationMinutes?: number };
+  config: Record<string, unknown>;
 }
 
 export async function fetchVaultRules(token: string | null): Promise<VaultRuleSnapshot[]> {
@@ -21,17 +22,20 @@ export async function fetchVaultRules(token: string | null): Promise<VaultRuleSn
   }
 }
 
-export function sessionCapDurationMs(rules: VaultRuleSnapshot[]): number {
-  const cap = rules.find((r) => r.ruleType === 'session_cap');
-  const minutes = cap?.config?.durationMinutes ?? 5;
-  return Math.min(60, Math.max(1, minutes)) * 60 * 1000;
+export function getSessionCapConfig(rules: VaultRuleSnapshot[]): SessionCapConfig {
+  const cap = rules.find((r) => r.ruleType === 'session_cap' && r.enabled);
+  return normalizeSessionCapConfig(cap?.config ?? {});
 }
 
-export async function pushSessionCapMinutes(
+export function sessionCapDurationMs(rules: VaultRuleSnapshot[]): number {
+  return getSessionCapConfig(rules).durationMinutes * 60 * 1000;
+}
+
+export async function pushSessionCapConfig(
   token: string,
-  durationMinutes: number,
+  config: Partial<SessionCapConfig>,
 ): Promise<{ ok: true; rules: VaultRuleSnapshot[] } | { ok: false; error: string }> {
-  const minutes = Math.min(60, Math.max(1, Math.trunc(durationMinutes)));
+  const merged = normalizeSessionCapConfig(config as Record<string, unknown>);
   try {
     const res = await fetch(`${apiBaseUrl()}/vault`, {
       method: 'POST',
@@ -43,7 +47,7 @@ export async function pushSessionCapMinutes(
       body: JSON.stringify({
         ruleType: 'session_cap',
         enabled: true,
-        config: { durationMinutes: minutes },
+        config: merged,
       }),
     });
     if (!res.ok) {
@@ -57,4 +61,15 @@ export async function pushSessionCapMinutes(
   } catch {
     return { ok: false, error: 'Network error' };
   }
+}
+
+export async function pushSessionCapMinutes(
+  token: string,
+  durationMinutes: number,
+): Promise<{ ok: true; rules: VaultRuleSnapshot[] } | { ok: false; error: string }> {
+  const stored = await chrome.storage.local.get(['tc_vault_rules']);
+  const existing = getSessionCapConfig(
+    (stored.tc_vault_rules as VaultRuleSnapshot[] | undefined) ?? [],
+  );
+  return pushSessionCapConfig(token, { ...existing, durationMinutes });
 }

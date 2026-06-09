@@ -2,7 +2,11 @@ import { fetchVaultRules } from './vault-sync.js';
 import { syncSettingsToStorage } from './settings-sync.js';
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({ tc_demo: true });
+  chrome.storage.local.set({
+    tc_demo: true,
+    tc_panel_expanded: false,
+    tc_panel_always_on: false,
+  });
 });
 
 async function syncUserConfig(token: string | null) {

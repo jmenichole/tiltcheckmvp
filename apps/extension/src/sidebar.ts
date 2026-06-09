@@ -1,9 +1,11 @@
+import type { GameExclusionEntry, LockoutStyle } from '@tiltcheck/shared';
 import { webBaseUrl } from './config.js';
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
-import type { GameExclusionEntry } from '@tiltcheck/shared';
 import type { TiltWarningState } from './tilt-warnings.js';
+import { formatTiltEducation } from './tilt-education.js';
+import { getSessionCapConfig } from './vault-sync.js';
 
 const CHIP_SIZE = 40;
 const PANEL_Z = 2147483646;
@@ -33,6 +35,7 @@ export type PanelState = {
   riskProfile: RiskProfile;
   sessionCapArmed: boolean;
   sessionCapMinutes: number;
+  sessionCapLockoutStyle: LockoutStyle;
   gameExclusions: GameExclusionEntry[];
   gameMatch: GameMatchInfo;
   liveStats: LiveStats;
@@ -117,11 +120,16 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     'tc_panel_height',
   ]);
   const loggedIn = Boolean(stored.tc_session_token);
+  const capConfig = getSessionCapConfig(
+    (stored.tc_vault_rules as Array<{ ruleType: string; enabled: boolean; config?: Record<string, unknown> }>) ??
+      [],
+  );
   const vaultRules =
-    (stored.tc_vault_rules as Array<{ ruleType: string; enabled: boolean; config?: { durationMinutes?: number } }>) ??
+    (stored.tc_vault_rules as Array<{ ruleType: string; enabled: boolean; config?: Record<string, unknown> }>) ??
     [];
-  const cap = vaultRules.find((r) => r.ruleType === 'session_cap' && r.enabled);
+  const capRule = vaultRules.find((r) => r.ruleType === 'session_cap' && r.enabled);
   const alwaysOn = stored.tc_panel_always_on === true;
+  const userExpanded = stored.tc_panel_expanded === true;
   const position = await loadPanelPosition();
 
   return {
@@ -129,13 +137,15 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     demoMode: !loggedIn || stored.tc_demo !== false,
     username: stored.tc_username as string | undefined,
     riskProfile: (stored.tc_risk_profile as RiskProfile) ?? 'moderate',
-    sessionCapArmed: loggedIn && stored.tc_demo === false && Boolean(cap),
-    sessionCapMinutes: cap?.config?.durationMinutes ?? 5,
+    sessionCapArmed: loggedIn && stored.tc_demo === false && Boolean(capRule),
+    sessionCapMinutes: capConfig.durationMinutes,
+    sessionCapLockoutStyle: capConfig.lockoutStyle,
     gameExclusions: (stored.tc_game_exclusions as GameExclusionEntry[]) ?? [],
     alwaysOn,
     panelWidth: clampWidth(typeof stored.tc_panel_width === 'number' ? stored.tc_panel_width : DEFAULT_WIDTH),
     panelHeight: clampHeight(typeof stored.tc_panel_height === 'number' ? stored.tc_panel_height : DEFAULT_HEIGHT),
-    expanded: alwaysOn || stored.tc_panel_expanded === true,
+    // Default: TC chip. Expanded only if user saved float open or opted into Pin.
+    expanded: alwaysOn ? true : userExpanded,
     position,
     gameMatch: { status: 'clear' },
     liveStats: { clicksIn5s: 0, latestIndicator: null },
@@ -351,9 +361,10 @@ export class TiltCheckSidebar {
       return `<span style="color:#ff5c5c;font-weight:600">Locked · ${gameMatch.label ?? 'game'}</span>`;
     }
     if (tiltWarning.activeIndicator && tiltWarning.stage > 0) {
+      const edu = formatTiltEducation(tiltWarning.activeIndicator, this.state.riskProfile);
       const color = tiltWarning.stage >= 2 ? '#ff8a72' : '#5eead4';
       const label = tiltWarning.stage >= 2 ? 'Last call' : 'Pulse check';
-      return `<span style="color:${color};font-weight:600">${label}</span>`;
+      return `<span style="color:${color};font-weight:600">${label} · ${edu.patternLabel}</span><br><span style="color:#6b7280;font-size:10px">${edu.metricLine}</span>`;
     }
     const ind = this.state.liveStats.latestIndicator;
     if (ind && (ind.severity === 'high' || ind.severity === 'critical')) {
@@ -374,7 +385,7 @@ export class TiltCheckSidebar {
       document.getElementById(PAGE_MARGIN_STYLE_ID)?.remove();
       const chip = document.createElement('button');
       chip.type = 'button';
-      chip.title = 'TiltCheck';
+      chip.title = 'TiltCheck — click to open';
       chip.style.cssText =
         baseStyle +
         `;width:${CHIP_SIZE}px;height:${CHIP_SIZE}px;border-radius:50%;border:1px solid rgba(23,195,178,.45);background:#0a0c10;color:#17c3b2;font:700 11px/1 ui-monospace,monospace;box-shadow:0 4px 16px rgba(0,0,0,.35);padding:0;cursor:pointer`;
@@ -424,8 +435,10 @@ export class TiltCheckSidebar {
       ? `@${this.state.username ?? 'player'}`
       : '<button type="button" data-tc-login style="background:transparent;border:none;color:#17c3b2;cursor:pointer;padding:0;font:inherit">Connect</button>';
 
+    const lockoutLabel =
+      this.state.sessionCapLockoutStyle === 'hard_stop' ? 'hard stop' : 'friction first';
     const armed = this.state.sessionCapArmed
-      ? `Armed ${this.state.sessionCapMinutes}m`
+      ? `Line ${this.state.sessionCapMinutes}m · ${lockoutLabel}`
       : 'Lockout off';
     const demo = this.state.demoMode ? ' · Demo' : '';
     const sens = RISK_SHORT[this.state.riskProfile];
@@ -442,7 +455,7 @@ export class TiltCheckSidebar {
       <div data-tc-no-drag style="font-size:10px;color:#6b7280;line-height:1.45;padding:6px 8px;background:#12161e;border-radius:6px;border:1px solid rgba(30,37,51,.8)">
         <div><span style="color:#5eead4">Tilt</span> — pulse check → last call → Touch Grass</div>
         <div><span style="color:#5eead4">Blocks</span> — edit on Web → Sync here</div>
-        <div><span style="color:#5eead4">Lockout</span> — arms when connected, demo off</div>
+        <div><span style="color:#5eead4">Line</span> — past you set it on Web → Sync here</div>
       </div>
       <div data-tc-no-drag style="display:flex;gap:6px;align-items:center">
         <input type="number" data-tc-lockout-min min="1" max="60" value="${this.draftLockoutMinutes}" ${this.state.loggedIn ? '' : 'disabled'} title="Touch Grass lockout length (minutes)" style="width:48px;padding:4px 6px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:#12161e;color:#e6e6e6;font:inherit" />

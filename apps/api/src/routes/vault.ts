@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { normalizeSessionCapConfig } from '@tiltcheck/shared';
 import {
   createVaultRule,
   deleteVaultRule,
@@ -8,17 +9,6 @@ import {
 import { getAuthUserFromRequest } from './auth.js';
 
 export const vaultRoutes = new Hono();
-
-function normalizeSessionCapConfig(config: Record<string, unknown>): Record<string, unknown> {
-  const raw =
-    typeof config.durationMinutes === 'number'
-      ? config.durationMinutes
-      : typeof config.maxMinutes === 'number'
-        ? config.maxMinutes
-        : 5;
-  const durationMinutes = Math.min(60, Math.max(1, Math.trunc(raw)));
-  return { durationMinutes };
-}
 
 function validateRulePayload(body: {
   ruleType?: string;

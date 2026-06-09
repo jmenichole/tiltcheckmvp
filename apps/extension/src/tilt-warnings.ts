@@ -1,5 +1,6 @@
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
+import type { TiltEducation } from './tilt-education.js';
 import { dismissPageToast, showPageToast } from './page-toast.js';
 
 const BANNER_ROOT_ID = 'tiltcheck-tilt-warning-root';
@@ -29,12 +30,6 @@ function highestIndicator(indicators: TiltIndicator[]): TiltIndicator | null {
 function minWarnRank(profile: RiskProfile): number {
   if (profile === 'degen') return 2;
   return 1;
-}
-
-function friendlyHeadline(indicator: TiltIndicator): string {
-  if (indicator.type === 'fast_clicks') return 'Click spam — you are on autopilot.';
-  if (indicator.type === 'chasing_losses') return 'Loss streak heating up.';
-  return indicator.description;
 }
 
 export class TiltWarningEscalation {
@@ -90,17 +85,30 @@ export class TiltWarningEscalation {
   }
 }
 
-export function showTiltWarningBanner(indicator: TiltIndicator, stage: 1 | 2, demoMode: boolean): void {
+export function showTiltWarningBanner(
+  education: TiltEducation,
+  stage: 1 | 2,
+  demoMode: boolean,
+  sessionCapMinutes?: number,
+): void {
   const isUrgent = stage === 2;
+  const headline =
+    stage === 1
+      ? `${education.patternLabel} — heating up`
+      : `${education.patternLabel} — last call`;
+
+  let sub = `${education.metricLine}\n${education.insightLine}`;
+  if (isUrgent) {
+    sub = demoMode
+      ? `${education.metricLine}\nDemo mode — no lockout. Still, walk it off.`
+      : `${education.metricLine}\nYour ${sessionCapMinutes ?? '?'} min line is armed. Next spike locks the tab.`;
+  }
+
   showPageToast(BANNER_ROOT_ID, {
     tone: isUrgent ? 'heat' : 'pulse',
     tag: isUrgent ? 'TC · LAST CALL' : 'TC · PULSE CHECK',
-    headline: friendlyHeadline(indicator),
-    sub: isUrgent
-      ? demoMode
-        ? 'Demo mode — no lockout, but slow down.'
-        : 'Next spike locks the tab. Touch Grass incoming.'
-      : 'Walk it off before we lock the table.',
+    headline,
+    sub,
   });
 }
 

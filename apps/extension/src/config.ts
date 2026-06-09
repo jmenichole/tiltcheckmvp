@@ -1,6 +1,7 @@
 /** Baked in at build time; override with EXTENSION_API_URL for local API dev. */
 export const DEFAULT_API_URL = 'https://tiltcheck-api-production.up.railway.app';
 export const DEFAULT_WEB_URL = 'https://tiltcheckmvp-production.up.railway.app';
+export const DEFAULT_CHROME_WEB_STORE_URL = '';
 
 export function apiBaseUrl(): string {
   const baked =
@@ -12,6 +13,18 @@ export function webBaseUrl(): string {
   const baked =
     (typeof process !== 'undefined' && process.env?.EXTENSION_WEB_URL) || DEFAULT_WEB_URL;
   return baked.replace(/\/$/, '');
+}
+
+export function chromeWebStoreUrl(): string {
+  const baked =
+    (typeof process !== 'undefined' && process.env?.EXTENSION_CWS_URL) ||
+    DEFAULT_CHROME_WEB_STORE_URL;
+  return baked.trim();
+}
+
+export function extensionInstallHref(): string {
+  const cws = chromeWebStoreUrl();
+  return cws || `${webBaseUrl()}/extension`;
 }
 
 /** Runtime override stored from extension options / devtools (optional). */

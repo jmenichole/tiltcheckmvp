@@ -4,12 +4,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
-import {
-  EXTENSION_INSTALL_HREF,
-  NAV_DESKTOP_LINKS,
-  NAV_MENU_GROUPS,
-  NAV_QUICK_LINKS,
-} from '@/lib/nav-menu';
+import { extensionInstallHref, isChromeWebStoreLive } from '@/lib/extension-install';
+import { NAV_DESKTOP_LINKS, NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
 
 type NavUser = { username: string; avatarUrl: string | null } | null;
 
@@ -97,6 +93,8 @@ export default function SiteNav() {
   }
 
   const avatarInitial = user?.username?.charAt(0)?.toUpperCase() ?? '?';
+  const installHref = extensionInstallHref();
+  const cwsLive = isChromeWebStoreLive();
 
   return (
     <>
@@ -118,22 +116,43 @@ export default function SiteNav() {
         </nav>
 
         <div className="nav-topbar-right">
-          <Link
-            href={EXTENSION_INSTALL_HREF}
-            className="nav-install-btn"
-            aria-label="Install extension"
-            title="Install extension"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M12 3v10m0 0l4-4m-4 4L8 9M5 17h14"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
+          {cwsLive ? (
+            <a
+              href={installHref}
+              className="nav-install-btn"
+              aria-label="Install extension from Chrome Web Store"
+              title="Install from Chrome Web Store"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3v10m0 0l4-4m-4 4L8 9M5 17h14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          ) : (
+            <Link
+              href={installHref}
+              className="nav-install-btn"
+              aria-label="Install extension"
+              title="Extension setup"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3v10m0 0l4-4m-4 4L8 9M5 17h14"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
+          )}
           {user ? (
             <Link
               href="/dashboard"

@@ -1,30 +1,46 @@
 import Link from 'next/link';
 import AuthAwareLink from '@/components/AuthAwareLink';
+import {
+  extensionInstallHref,
+  isChromeWebStoreLive,
+} from '@/lib/extension-install';
 
 const setupSteps = [
   {
     step: '01',
     title: 'Install the extension',
-    copy: 'Add TiltCheck from the Chrome Web Store. Click the toolbar icon — no floating widget on casino pages.',
+    copyLive: 'Add TiltCheck from the Chrome Web Store. Click the toolbar icon — no floating widget on casino pages.',
+    copyPending:
+      'Load unpacked from this repo: build with `pnpm --filter @tiltcheck/extension build`, then Chrome → Extensions → Developer mode → Load unpacked → `apps/extension/dist`.',
   },
   {
     step: '02',
     title: 'Connect Discord',
-    copy: 'One login syncs your game exclusions, tilt sensitivity, and session cap across dashboard and extension.',
+    copyLive: 'One login syncs your game exclusions, tilt sensitivity, and session cap across dashboard and extension.',
+    copyPending: 'One login syncs your game exclusions, tilt sensitivity, and session cap across dashboard and extension.',
   },
   {
     step: '03',
     title: 'Block your problem games',
-    copy: 'In Settings: toggle presets (blackjack, crash, slots…) or paste a game URL / custom keywords. Choose block or warn per game.',
+    copyLive:
+      'In Settings: toggle presets (blackjack, crash, slots…) or paste a game URL / custom keywords. Choose block or warn per game.',
+    copyPending:
+      'In Settings: toggle presets (blackjack, crash, slots…) or paste a game URL / custom keywords. Choose block or warn per game.',
   },
   {
     step: '04',
     title: 'Set tilt sensitivity + session cap',
-    copy: 'Pick how early tilt warnings fire. Set how many minutes Touch Grass locks the tab when a block or critical tilt hits.',
+    copyLive:
+      'Pick how early tilt warnings fire. Set how many minutes Touch Grass locks the tab when a block or critical tilt hits.',
+    copyPending:
+      'Pick how early tilt warnings fire. Set how many minutes Touch Grass locks the tab when a block or critical tilt hits.',
   },
 ] as const;
 
 export default function ExtensionPage() {
+  const cwsLive = isChromeWebStoreLive();
+  const installHref = extensionInstallHref();
+
   return (
     <main className="public-page text-white">
       <section className="hero-surface">
@@ -36,14 +52,20 @@ export default function ExtensionPage() {
             set — open the TC icon like Trust Wallet; protection runs quietly on casino tabs.
           </p>
           <div className="hero-actions">
-            <a
-              href="https://chromewebstore.google.com/search/TiltCheck"
-              className="btn btn-primary"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              CHROME WEB STORE
-            </a>
+            {cwsLive ? (
+              <a
+                href={installHref}
+                className="btn btn-primary"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                INSTALL FROM CHROME WEB STORE
+              </a>
+            ) : (
+              <a href="#unpacked-install" className="btn btn-primary">
+                INSTALL UNPACKED
+              </a>
+            )}
             <Link href="/login?redirect=/extension" className="btn btn-secondary">
               CONNECT DISCORD
             </Link>
@@ -51,12 +73,32 @@ export default function ExtensionPage() {
               GAME EXCLUSIONS
             </AuthAwareLink>
           </div>
-          <p className="hero-privacy-guarantee mt-3">
-            Store listing may still be pending — search &ldquo;TiltCheck&rdquo; or load unpacked from this
-            repo until published.
-          </p>
+          {cwsLive ? (
+            <p className="hero-privacy-guarantee mt-3">Install from Chrome Web Store — one click, auto-updates.</p>
+          ) : (
+            <p className="hero-privacy-guarantee mt-3">
+              Store listing may still be pending — use the unpacked steps below until published.
+            </p>
+          )}
         </div>
       </section>
+
+      {!cwsLive ? (
+        <section id="unpacked-install" className="public-page-section px-4">
+          <div className="landing-shell public-page-card">
+            <h2 className="public-page-card__title">Install unpacked (developer mode)</h2>
+            <ol className="public-page-card__copy list-decimal pl-5 space-y-2">
+              <li>
+                Build the extension:{' '}
+                <code className="text-sm">pnpm --filter @tiltcheck/extension build</code>
+              </li>
+              <li>Open Chrome → Extensions → enable Developer mode</li>
+              <li>Click Load unpacked and select the <code className="text-sm">apps/extension/dist</code> folder</li>
+              <li>Pin the TiltCheck icon — protection runs on casino tabs in the background</li>
+            </ol>
+          </div>
+        </section>
+      ) : null}
 
       <section className="public-page-section px-4">
         <div className="landing-shell">
@@ -69,7 +111,9 @@ export default function ExtensionPage() {
               <article key={item.step} className="public-page-card">
                 <p className="public-page-card__eyebrow">Step {item.step}</p>
                 <h3 className="public-page-card__title">{item.title}</h3>
-                <p className="public-page-card__copy">{item.copy}</p>
+                <p className="public-page-card__copy">
+                  {cwsLive ? item.copyLive : item.copyPending}
+                </p>
               </article>
             ))}
           </div>

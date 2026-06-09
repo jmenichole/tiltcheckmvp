@@ -1,8 +1,12 @@
 import Link from 'next/link';
+import { chromeWebStoreUrl, isChromeWebStoreLive } from '@/lib/extension-install';
 
 const DISCORD_URL = 'https://discord.gg/gdBsEJfCar';
 
 export default function LandingHeroActions() {
+  const cwsLive = isChromeWebStoreLive();
+  const cwsUrl = chromeWebStoreUrl();
+
   return (
     <>
       <div className="hero-actions hero-actions--desktop">
@@ -15,6 +19,19 @@ export default function LandingHeroActions() {
         >
           INSTALL THE EXTENSION
         </Link>
+        {cwsLive ? (
+          <a
+            href={cwsUrl}
+            className="btn btn-ghost"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-funnel-event="landing_cws_click"
+            data-funnel-source="web-home-hero"
+            data-funnel-label="Chrome Web Store"
+          >
+            CHROME WEB STORE
+          </a>
+        ) : null}
         <Link
           href="/casinos"
           className="btn btn-ghost"
@@ -39,6 +56,19 @@ export default function LandingHeroActions() {
         >
           INSTALL THE EXTENSION
         </Link>
+        {cwsLive ? (
+          <a
+            href={cwsUrl}
+            className="btn btn-ghost"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-funnel-event="landing_cws_click"
+            data-funnel-source="web-home-hero-mobile"
+            data-funnel-label="Chrome Web Store"
+          >
+            CHROME WEB STORE
+          </a>
+        ) : null}
         <Link
           href="/casinos"
           className="btn btn-ghost"

@@ -17,6 +17,12 @@ type SettingsState = {
   gameExclusions: GameExclusionEntry[];
 };
 
+const PLEDGE_DEFAULTS_KEY = 'tc_pledge_defaults';
+const PLEDGE_DISCLOSURE =
+  'Works in this browser with TiltCheck installed. You can still withdraw on mobile or another browser — a nudge from past-you, not a bank lock.';
+
+type PledgeDefaults = { durationMinutes: number; futureMeNote: string };
+
 const SENSITIVITY_PROFILES: {
   id: RiskProfile;
   title: string;
@@ -58,6 +64,37 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [gameExclusionsDirty, setGameExclusionsDirty] = useState(false);
   const initialLoadDone = useRef(false);
+  const [pledgeDefaults, setPledgeDefaults] = useState<PledgeDefaults>({
+    durationMinutes: 240,
+    futureMeNote: '',
+  });
+  const [pledgeDefaultsStatus, setPledgeDefaultsStatus] = useState('');
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PLEDGE_DEFAULTS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<PledgeDefaults>;
+        setPledgeDefaults({
+          durationMinutes:
+            typeof parsed.durationMinutes === 'number' ? parsed.durationMinutes : 240,
+          futureMeNote: typeof parsed.futureMeNote === 'string' ? parsed.futureMeNote : '',
+        });
+      }
+    } catch {
+      /* ignore corrupt localStorage */
+    }
+  }, []);
+
+  function savePledgeDefaults(next: PledgeDefaults) {
+    setPledgeDefaults(next);
+    try {
+      localStorage.setItem(PLEDGE_DEFAULTS_KEY, JSON.stringify(next));
+      setPledgeDefaultsStatus('Defaults saved.');
+    } catch {
+      setPledgeDefaultsStatus('Could not save defaults.');
+    }
+  }
 
   useEffect(() => {
     Promise.all([apiFetch('/auth/me'), apiFetch('/user/settings')])
@@ -237,6 +274,62 @@ export default function SettingsPage() {
                 })}
               </div>
             </fieldset>
+
+            <section id="vault-pledge" className="settings-game-exclusion">
+              <h3 className="public-page-card__title settings-section-title">Vault pledge defaults</h3>
+              <p className="public-page-card__copy settings-auto-save-note">
+                Pre-fills the dashboard pledge form.{' '}
+                <Link href="/dashboard" className="dashboard-link">
+                  Arm an active pledge on the dashboard
+                </Link>
+                .
+              </p>
+              <p className="public-page-card__copy">{PLEDGE_DISCLOSURE}</p>
+              <div className="dashboard-field">
+                <label htmlFor="pledge-default-duration">Default duration (minutes)</label>
+                <input
+                  id="pledge-default-duration"
+                  type="number"
+                  min={15}
+                  max={10080}
+                  value={pledgeDefaults.durationMinutes}
+                  onChange={(e) =>
+                    savePledgeDefaults({
+                      ...pledgeDefaults,
+                      durationMinutes: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div className="dashboard-field">
+                <label htmlFor="pledge-default-note">Default note to future you (optional)</label>
+                <textarea
+                  id="pledge-default-note"
+                  maxLength={140}
+                  rows={2}
+                  value={pledgeDefaults.futureMeNote}
+                  onChange={(e) =>
+                    savePledgeDefaults({
+                      ...pledgeDefaults,
+                      futureMeNote: e.target.value,
+                    })
+                  }
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(23,195,178,.35)',
+                    background: '#12161e',
+                    color: '#e6e6e6',
+                    font: 'inherit',
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+              {pledgeDefaultsStatus ? (
+                <p className="dashboard-profile-status">{pledgeDefaultsStatus}</p>
+              ) : null}
+            </section>
 
             <section id="game-exclusion" className="settings-game-exclusion">
               <h3 className="public-page-card__title settings-section-title">Game self-exclusion</h3>

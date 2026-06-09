@@ -8,6 +8,7 @@ const isWatch = process.argv.includes('--watch');
 
 const DEFAULT_API_URL = 'https://tiltcheck-api-production.up.railway.app';
 const DEFAULT_WEB_URL = 'https://tiltcheckmvp-production.up.railway.app';
+const DEFAULT_CWS_URL = '';
 
 const define = {
   'process.env.EXTENSION_API_URL': JSON.stringify(
@@ -15,6 +16,11 @@ const define = {
   ),
   'process.env.EXTENSION_WEB_URL': JSON.stringify(
     process.env.EXTENSION_WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || DEFAULT_WEB_URL,
+  ),
+  'process.env.EXTENSION_CWS_URL': JSON.stringify(
+    process.env.EXTENSION_CWS_URL ||
+      process.env.NEXT_PUBLIC_CHROME_WEB_STORE_URL ||
+      DEFAULT_CWS_URL,
   ),
 };
 

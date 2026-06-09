@@ -2,9 +2,6 @@ export type NavLink = { href: string; label: string; external?: boolean };
 
 export type NavMenuGroup = { title: string; links: NavLink[] };
 
-/** Setup page until Chrome Web Store listing is live. */
-export const EXTENSION_INSTALL_HREF = '/extension';
-
 export const NAV_QUICK_LINKS: NavLink[] = [
   { href: '/casinos', label: 'Casino Trust' },
   { href: '/dashboard', label: 'Dashboard' },

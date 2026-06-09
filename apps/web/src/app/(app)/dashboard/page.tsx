@@ -3,7 +3,14 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
-import { normalizeSessionCapConfig, type LockoutStyle } from '@tiltcheck/shared';
+import {
+  normalizeSessionCapConfig,
+  normalizeVaultPledgeConfig,
+  isPledgeActive,
+  buildPledgeReleaseAt,
+  type LockoutStyle,
+  type VaultPledgeSite,
+} from '@tiltcheck/shared';
 import DashboardProtectionAside from '@/components/DashboardProtectionAside';
 import DashboardTabBar from '@/components/DashboardTabBar';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
@@ -15,6 +22,11 @@ interface VaultRule {
   enabled: boolean;
   config: Record<string, unknown>;
 }
+
+const PLEDGE_DISCLOSURE =
+  'Works in this browser with TiltCheck installed. You can still withdraw on mobile or another browser — a nudge from past-you, not a bank lock.';
+
+const PLEDGE_PRESETS = [15, 60, 240, 1440] as const;
 
 export default function DashboardPage() {
   const [user, setUser] = useState<{ username: string; avatarUrl: string | null } | null>(null);
@@ -31,8 +43,17 @@ export default function DashboardPage() {
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [pledgeMinutes, setPledgeMinutes] = useState(240);
+  const [pledgeSite, setPledgeSite] = useState<VaultPledgeSite>('both');
+  const [pledgeNote, setPledgeNote] = useState('');
+  const [pledgeStatus, setPledgeStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [pledgeCancelAck, setPledgeCancelAck] = useState(false);
+  const [pledgeCountdown, setPledgeCountdown] = useState('');
 
   const sessionCapRule = vaultRules.find((r) => r.ruleType === 'session_cap');
+  const pledgeRule = vaultRules.find((r) => r.ruleType === 'vault_pledge');
+  const pledgeConfig = pledgeRule ? normalizeVaultPledgeConfig(pledgeRule.config) : null;
+  const pledgeActive = pledgeConfig ? isPledgeActive(pledgeConfig) : false;
   const capSynced = Boolean(sessionCapRule?.enabled);
 
   function applyCapConfig(raw: Record<string, unknown> | undefined) {
@@ -55,6 +76,27 @@ export default function DashboardPage() {
       setShowWizard(!s.onboardingCompletedAt);
     }
   }
+
+  useEffect(() => {
+    if (!pledgeActive || !pledgeConfig) {
+      setPledgeCountdown('');
+      return;
+    }
+    const tick = () => {
+      const ms = Math.max(0, Date.parse(pledgeConfig.releaseAt) - Date.now());
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60_000);
+      const s = Math.floor((ms % 60_000) / 1000);
+      if (h > 0) {
+        setPledgeCountdown(`${h}h ${m}m ${s}s`);
+      } else {
+        setPledgeCountdown(`${m}m ${s}s`);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [pledgeActive, pledgeConfig?.releaseAt]);
 
   useEffect(() => {
     Promise.all([
@@ -85,9 +127,70 @@ export default function DashboardPage() {
     if (!res.ok) return;
     const data = await res.json();
     setVaultRules(data.rules ?? []);
-    const cap = (data.rules as VaultRule[] | undefined)?.find((r) => r.ruleType === 'session_cap');
+    const rules = (data.rules as VaultRule[] | undefined) ?? [];
+    const cap = rules.find((r) => r.ruleType === 'session_cap');
     if (cap?.enabled) {
       applyCapConfig(cap.config);
+    }
+    const pledge = rules.find((r) => r.ruleType === 'vault_pledge');
+    let pledgeIsActive = false;
+    if (pledge) {
+      const cfg = normalizeVaultPledgeConfig(pledge.config);
+      pledgeIsActive = isPledgeActive(cfg);
+      if (!pledgeIsActive) {
+        setPledgeMinutes(cfg.durationMinutes);
+        setPledgeSite(cfg.site);
+        setPledgeNote(cfg.futureMeNote);
+      }
+    }
+    try {
+      const raw = localStorage.getItem('tc_pledge_defaults');
+      if (raw && !pledgeIsActive) {
+        const defaults = JSON.parse(raw) as { durationMinutes?: number; futureMeNote?: string };
+        if (typeof defaults.durationMinutes === 'number') setPledgeMinutes(defaults.durationMinutes);
+        if (typeof defaults.futureMeNote === 'string') setPledgeNote(defaults.futureMeNote);
+      }
+    } catch {
+      /* ignore corrupt localStorage */
+    }
+  }
+
+  async function savePledge() {
+    setPledgeStatus('saving');
+    const releaseAt = buildPledgeReleaseAt(pledgeMinutes);
+    const res = await apiFetch('/vault', {
+      method: 'POST',
+      body: JSON.stringify({
+        ruleType: 'vault_pledge',
+        enabled: true,
+        config: {
+          durationMinutes: pledgeMinutes,
+          releaseAt,
+          site: pledgeSite,
+          futureMeNote: pledgeNote,
+          status: 'active',
+          startedAt: new Date().toISOString(),
+        },
+      }),
+    });
+    setPledgeStatus(res.ok ? 'idle' : 'error');
+    if (res.ok) await refreshVault();
+  }
+
+  async function cancelPledge() {
+    if (!pledgeRule || !pledgeConfig) return;
+    setPledgeStatus('saving');
+    const res = await apiFetch(`/vault/${pledgeRule.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ruleType: 'vault_pledge',
+        config: { ...pledgeConfig, status: 'cancelled' },
+      }),
+    });
+    setPledgeStatus(res.ok ? 'idle' : 'error');
+    if (res.ok) {
+      setPledgeCancelAck(false);
+      await refreshVault();
     }
   }
 
@@ -286,6 +389,155 @@ export default function DashboardPage() {
                   {vaultStatus === 'error' && (
                     <div className="dashboard-status dashboard-status--error" role="alert">
                       <p className="dashboard-status__copy">{vaultError}</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="public-page-section-heading" style={{ marginTop: '2.5rem' }}>
+                  <div>
+                    <span className="brand-eyebrow">Vault pledge</span>
+                    <h2 className="public-page-section-heading__title">Lock the vault bag</h2>
+                    <p className="public-page-section-heading__copy brand-lead">
+                      Stop the rinse — past you said don&apos;t pull from vault until the timer ends.
+                      Skim wins with AutoVault first, then pledge what stays in the vault.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="public-page-card public-page-card--accent dashboard-cap-card">
+                  <p className="public-page-card__copy" style={{ marginBottom: '1rem' }}>
+                    {PLEDGE_DISCLOSURE}
+                  </p>
+
+                  {pledgeActive && pledgeConfig ? (
+                    <>
+                      <h3 className="public-page-card__title mt-0">Pledge active</h3>
+                      <p className="public-page-card__copy">
+                        Past you pledged until{' '}
+                        <strong>{new Date(pledgeConfig.releaseAt).toLocaleString()}</strong>.
+                        Extension blocks vault withdraw on{' '}
+                        {pledgeConfig.site === 'both'
+                          ? 'Stake.us and nuts.gg'
+                          : pledgeConfig.site === 'stake_us'
+                            ? 'Stake.us'
+                            : 'nuts.gg'}
+                        .
+                      </p>
+                      {pledgeConfig.futureMeNote ? (
+                        <blockquote
+                          style={{
+                            margin: '0 0 1rem',
+                            padding: '0.75rem 1rem',
+                            borderLeft: '3px solid rgba(23,195,178,.6)',
+                            background: '#12161e',
+                            borderRadius: '0 8px 8px 0',
+                            fontStyle: 'normal',
+                          }}
+                        >
+                          {pledgeConfig.futureMeNote}
+                        </blockquote>
+                      ) : null}
+                      <p
+                        className="dashboard-status__title"
+                        style={{ fontSize: '1.75rem', fontVariantNumeric: 'tabular-nums' }}
+                        aria-live="polite"
+                      >
+                        {pledgeCountdown || '…'} left
+                      </p>
+                      <label className="dashboard-field-label" style={{ display: 'block', marginTop: '1rem' }}>
+                        <input
+                          type="checkbox"
+                          checked={pledgeCancelAck}
+                          onChange={(e) => setPledgeCancelAck(e.target.checked)}
+                        />{' '}
+                        I accept I&apos;m breaking my pledge
+                      </label>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ marginTop: '0.75rem' }}
+                        onClick={cancelPledge}
+                        disabled={!pledgeCancelAck || pledgeStatus === 'saving'}
+                      >
+                        {pledgeStatus === 'saving' ? 'Saving...' : 'Break my pledge'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="public-page-card__title mt-0">Arm a pledge</h3>
+                      <div className="dashboard-field">
+                        <label htmlFor="pledge-duration">Duration (minutes)</label>
+                        <div className="row" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                          {PLEDGE_PRESETS.map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              className={`btn btn-sm ${pledgeMinutes === m ? 'btn-primary' : 'btn-ghost'}`}
+                              onClick={() => setPledgeMinutes(m)}
+                            >
+                              {m < 60 ? `${m}m` : m < 1440 ? `${m / 60}h` : '24h'}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          id="pledge-duration"
+                          type="number"
+                          min={15}
+                          max={10080}
+                          value={pledgeMinutes}
+                          onChange={(e) => setPledgeMinutes(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="dashboard-field">
+                        <label htmlFor="pledge-site">Site scope</label>
+                        <select
+                          id="pledge-site"
+                          value={pledgeSite}
+                          onChange={(e) => setPledgeSite(e.target.value as VaultPledgeSite)}
+                        >
+                          <option value="both">Stake.us + nuts.gg</option>
+                          <option value="stake_us">Stake.us only</option>
+                          <option value="nuts">nuts.gg only</option>
+                        </select>
+                      </div>
+                      <div className="dashboard-field">
+                        <label htmlFor="pledge-note">Note to future you (optional, 140 chars)</label>
+                        <textarea
+                          id="pledge-note"
+                          maxLength={140}
+                          rows={2}
+                          value={pledgeNote}
+                          placeholder="e.g. Heater's in vault — don't rinse it back."
+                          onChange={(e) => setPledgeNote(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '0.65rem 0.75rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(23,195,178,.35)',
+                            background: '#12161e',
+                            color: '#e6e6e6',
+                            font: 'inherit',
+                            resize: 'vertical',
+                          }}
+                        />
+                        <p className="public-page-card__copy" style={{ marginTop: '0.35rem' }}>
+                          {pledgeNote.length}/140
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={savePledge}
+                        disabled={pledgeStatus === 'saving'}
+                      >
+                        {pledgeStatus === 'saving' ? 'Saving...' : 'Start pledge'}
+                      </button>
+                    </>
+                  )}
+
+                  {pledgeStatus === 'error' && (
+                    <div className="dashboard-status dashboard-status--error" role="alert" style={{ marginTop: '1rem' }}>
+                      <p className="dashboard-status__copy">Failed to save pledge — try again.</p>
                     </div>
                   )}
                 </div>

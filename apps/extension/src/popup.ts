@@ -1,5 +1,6 @@
 import { getSessionCapConfig, type VaultRuleSnapshot } from './vault-sync.js';
-import { webBaseUrl } from './config.js';
+import { normalizeVaultPledgeConfig, isPledgeActive } from '@tiltcheck/shared';
+import { webBaseUrl, chromeWebStoreUrl, extensionInstallHref } from './config.js';
 import { resolveApiBaseUrl } from './config.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
 import type { TcLiveState } from './alert-summary.js';
@@ -59,6 +60,17 @@ async function sendAvCommand(type: string, extra: Record<string, unknown> = {}):
 
 function lockoutLabel(style: LockoutStyle): string {
   return style === 'hard_stop' ? 'hard stop' : 'friction first';
+}
+
+function renderPledgeLine(rules: VaultRuleSnapshot[]): string {
+  const rule = rules.find((r) => r.ruleType === 'vault_pledge' && r.enabled);
+  if (!rule) return 'Vault pledge: none';
+  const config = normalizeVaultPledgeConfig(rule.config);
+  if (!isPledgeActive(config)) return 'Vault pledge: none';
+  const ms = Date.parse(config.releaseAt) - Date.now();
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  return `Vault pledge: ${h}h ${m}m left`;
 }
 
 function renderPactLine(
@@ -219,6 +231,10 @@ async function render(): Promise<void> {
 
   let statusMsg = '';
 
+  const cwsUrl = chromeWebStoreUrl();
+  const installHref = extensionInstallHref();
+  const installLinkLabel = cwsUrl ? 'Chrome Web Store' : 'Extension setup';
+
   app.innerHTML = `
     <div class="header">
       <span class="logo">TiltCheck</span>
@@ -228,6 +244,7 @@ async function render(): Promise<void> {
       <p class="status__label">${isHeat ? 'Needs attention' : 'This tab'}</p>
       <p class="status__line">${escapeHtml(alert)}</p>
       <p class="status__sub">${escapeHtml(renderPactLine(capArmed, cap, gameExclusions.length, riskProfile))}</p>
+      <p class="status__sub">${escapeHtml(renderPledgeLine(vaultRules))}</p>
     </div>
     ${renderSuggestion(live?.tiltSuggestion ?? null, () => {}, () => {})}
     ${renderAv(av, live?.autoVaultSite ?? null)}
@@ -237,7 +254,7 @@ async function render(): Promise<void> {
       ${loggedIn ? `<button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>` : `<button type="button" class="btn btn-secondary" id="tc-connect">Connect</button>`}
     </div>
     ${loggedIn ? `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-line">My Line</button></div>` : `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-settings">Settings</button></div>`}
-    <p class="footer">No floating widget — click the TC icon anytime. Enforcement still fires on-tab.</p>
+    <p class="footer">No floating widget — click the TC icon anytime. Enforcement still fires on-tab. <a href="${escapeHtml(installHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(installLinkLabel)}</a></p>
   `;
 
   const setMsg = (t: string) => {

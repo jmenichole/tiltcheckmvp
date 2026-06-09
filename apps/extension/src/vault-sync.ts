@@ -1,4 +1,10 @@
-import { normalizeSessionCapConfig, type SessionCapConfig } from '@tiltcheck/shared';
+import {
+  normalizeSessionCapConfig,
+  normalizeVaultPledgeConfig,
+  isPledgeActive,
+  pledgeAppliesToSite,
+  type SessionCapConfig,
+} from '@tiltcheck/shared';
 import { apiBaseUrl } from './config.js';
 
 export interface VaultRuleSnapshot {
@@ -29,6 +35,24 @@ export function getSessionCapConfig(rules: VaultRuleSnapshot[]): SessionCapConfi
 
 export function sessionCapDurationMs(rules: VaultRuleSnapshot[]): number {
   return getSessionCapConfig(rules).durationMinutes * 60 * 1000;
+}
+
+export function getVaultPledgeConfig(
+  rules: VaultRuleSnapshot[],
+): ReturnType<typeof normalizeVaultPledgeConfig> | null {
+  const rule = rules.find((r) => r.ruleType === 'vault_pledge' && r.enabled);
+  if (!rule) return null;
+  const config = normalizeVaultPledgeConfig(rule.config);
+  return isPledgeActive(config) ? config : null;
+}
+
+export function getActivePledgeForSite(
+  rules: VaultRuleSnapshot[],
+  site: 'stake_us' | 'nuts',
+): ReturnType<typeof normalizeVaultPledgeConfig> | null {
+  const config = getVaultPledgeConfig(rules);
+  if (!config) return null;
+  return pledgeAppliesToSite(config, site) ? config : null;
 }
 
 export async function pushSessionCapConfig(

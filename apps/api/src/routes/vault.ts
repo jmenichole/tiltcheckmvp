@@ -1,5 +1,9 @@
 import { Hono } from 'hono';
-import { normalizeSessionCapConfig } from '@tiltcheck/shared';
+import {
+  normalizeSessionCapConfig,
+  normalizeVaultPledgeConfig,
+  autoReleaseIfExpired,
+} from '@tiltcheck/shared';
 import {
   createVaultRule,
   deleteVaultRule,
@@ -16,20 +20,39 @@ function validateRulePayload(body: {
   config?: Record<string, unknown>;
 }): { ruleType: string; enabled: boolean; config: Record<string, unknown> } | string {
   const ruleType = body.ruleType ?? 'session_cap';
-  if (ruleType !== 'session_cap') {
-    return 'Only session_cap rules are supported in v2 ship gate';
+  if (ruleType === 'session_cap') {
+    return {
+      ruleType,
+      enabled: body.enabled !== false,
+      config: normalizeSessionCapConfig(body.config ?? {}),
+    };
   }
-  return {
-    ruleType,
-    enabled: body.enabled !== false,
-    config: normalizeSessionCapConfig(body.config ?? {}),
-  };
+  if (ruleType === 'vault_pledge') {
+    const normalized = normalizeVaultPledgeConfig(body.config ?? {});
+    if (normalized.status === 'active' && Date.parse(normalized.releaseAt) <= Date.now()) {
+      return 'releaseAt must be in the future for active pledge';
+    }
+    return {
+      ruleType,
+      enabled: body.enabled !== false,
+      config: normalized,
+    };
+  }
+  return `Unsupported ruleType: ${ruleType}`;
 }
 
 vaultRoutes.get('/', async (c) => {
   const user = await getAuthUserFromRequest(c.req.header('cookie'), c.req.header('authorization'));
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
-  const rules = await listVaultRules(user.id);
+  const rules = (await listVaultRules(user.id)).map((rule) => {
+    if (rule.ruleType !== 'vault_pledge') return rule;
+    const released = autoReleaseIfExpired(normalizeVaultPledgeConfig(rule.config));
+    if (released.status !== rule.config.status) {
+      void updateVaultRule(user.id, rule.id, { config: released });
+      return { ...rule, config: released };
+    }
+    return rule;
+  });
   return c.json({ rules });
 });
 
@@ -61,13 +84,21 @@ vaultRoutes.patch('/:id', async (c) => {
   if (!user) return c.json({ error: 'Unauthorized' }, 401);
   const id = c.req.param('id');
   const body = await c.req.json();
+  const existing = await listVaultRules(user.id);
+  const rule = existing.find((r) => r.id === id);
+  if (!rule) return c.json({ error: 'Rule not found' }, 404);
+
+  const ruleType = body.ruleType ?? rule.ruleType;
   const patch: { enabled?: boolean; config?: Record<string, unknown> } = {};
   if (body.enabled !== undefined) patch.enabled = Boolean(body.enabled);
   if (body.config !== undefined) {
-    if (body.ruleType && body.ruleType !== 'session_cap') {
-      return c.json({ error: 'Only session_cap rules are supported' }, 400);
+    if (ruleType === 'vault_pledge') {
+      patch.config = normalizeVaultPledgeConfig(body.config);
+    } else if (ruleType === 'session_cap') {
+      patch.config = normalizeSessionCapConfig(body.config);
+    } else {
+      return c.json({ error: `Unsupported ruleType: ${ruleType}` }, 400);
     }
-    patch.config = normalizeSessionCapConfig(body.config);
   }
   const updated = await updateVaultRule(user.id, id, patch);
   if (!updated) return c.json({ error: 'Rule not found' }, 404);

@@ -31,6 +31,7 @@ import type { ExclusionSuggestion } from '@tiltcheck/shared';
 import { formatAlertSummary, publishLiveState } from './alert-summary.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
 import { installContentBridge } from './content-bridge.js';
+import { startVaultPledgeGuard } from './vault-pledge-guard.js';
 
 const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
 const PACT_ACK_DELAY_MS = 900;
@@ -59,6 +60,7 @@ if (!excluded) {
     label: undefined as string | undefined,
     countdownSec: undefined as number | undefined,
   };
+  let stopPledgeGuard: (() => void) | null = null;
 
   const detector = new TiltDetector(riskProfile);
   const warningEscalation = new TiltWarningEscalation();
@@ -194,6 +196,16 @@ if (!excluded) {
     gameWatcher.setExclusions(gameExclusions);
     pushLiveState();
     scheduleSessionPactAck();
+
+    stopPledgeGuard?.();
+    const site = hostname.includes('stake.us')
+      ? 'stake_us'
+      : hostname.includes('nuts.gg')
+        ? 'nuts'
+        : null;
+    if (site && loggedIn && !demoMode) {
+      stopPledgeGuard = startVaultPledgeGuard(() => vaultRules, () => site);
+    }
   }
 
   chrome.storage.onChanged.addListener((changes) => {

@@ -39,6 +39,7 @@ Point each Railway service at the **monorepo root** with the filter commands abo
 |----------|-----------------|-------------------|----------|
 | `NEXT_PUBLIC_WEB_URL` | `https://staging.tiltcheck.me` | `https://tiltcheck.me` | Yes |
 | `NEXT_PUBLIC_API_URL` | `https://api-staging.tiltcheck.me` | `https://api.tiltcheck.me` | Yes |
+| `NEXT_PUBLIC_CHROME_WEB_STORE_URL` | *(empty until listed)* | `https://chromewebstore.google.com/detail/tiltcheck/EXTENSION_ID` | No |
 | `NEXT_PUBLIC_SHOW_TOOLS_NAV` | `false` | `false` | No (Phase 4) |
 | `NODE_ENV` | `production` | `production` | Yes |
 
@@ -59,6 +60,15 @@ Point each Railway service at the **monorepo root** with the filter commands abo
 ### Extension (Chrome Web Store)
 
 Build locally: `pnpm --filter @tiltcheck/extension build`. Set `EXTENSION_API_URL` at build time to staging or production API. Staging builds may add staging hostnames in `host_permissions`.
+
+Install URL env (web + extension build):
+
+| Variable | Purpose |
+|----------|---------|
+| `NEXT_PUBLIC_CHROME_WEB_STORE_URL` | Web CTAs — empty until listed; then full CWS detail URL |
+| `EXTENSION_CWS_URL` | Optional override for extension popup link (defaults to `NEXT_PUBLIC_CHROME_WEB_STORE_URL` at build) |
+
+When unset, all install CTAs route to `/extension`. See [extension-publish.md](./extension-publish.md).
 
 ### Discord bot (optional)
 

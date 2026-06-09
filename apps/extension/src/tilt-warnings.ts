@@ -1,9 +1,11 @@
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
 import type { TiltEducation } from './tilt-education.js';
-import { dismissPageToast, showPageToast } from './page-toast.js';
+import {
+  dismissTiltWarningOverlay,
+  showTiltWarningOverlay,
+} from './tilt-warning-overlay.js';
 
-const BANNER_ROOT_ID = 'tiltcheck-tilt-warning-root';
 const RESET_CLEAR_MS = 30_000;
 
 export type TiltEnforcementAction = 'none' | 'warn' | 'lockout';
@@ -36,6 +38,7 @@ export class TiltWarningEscalation {
   private stage: 0 | 1 | 2 = 0;
   private lastActiveAt = 0;
   private activeIndicator: TiltIndicator | null = null;
+  private dismissedUntilClear = false;
 
   getState(): TiltWarningState {
     return { stage: this.stage, activeIndicator: this.activeIndicator };
@@ -45,6 +48,13 @@ export class TiltWarningEscalation {
     this.stage = 0;
     this.activeIndicator = null;
     this.lastActiveAt = 0;
+    this.dismissedUntilClear = false;
+    dismissTiltWarningBanner();
+  }
+
+  /** User tapped through stage-1 overlay — hide until tilt clears. */
+  acknowledgeStageOne() {
+    this.dismissedUntilClear = true;
     dismissTiltWarningBanner();
   }
 
@@ -68,6 +78,7 @@ export class TiltWarningEscalation {
     const rank = severityRank(top.severity);
 
     if (rank >= 3) {
+      this.dismissedUntilClear = false;
       if (demoMode) {
         this.stage = 2;
         return { action: 'warn', indicator: top };
@@ -76,11 +87,15 @@ export class TiltWarningEscalation {
     }
 
     if (rank >= 2) {
+      this.dismissedUntilClear = false;
       this.stage = 2;
       return { action: 'warn', indicator: top };
     }
 
     this.stage = 1;
+    if (this.dismissedUntilClear) {
+      return { action: 'none', indicator: top };
+    }
     return { action: 'warn', indicator: top };
   }
 }
@@ -90,28 +105,11 @@ export function showTiltWarningBanner(
   stage: 1 | 2,
   demoMode: boolean,
   sessionCapMinutes?: number,
+  onDismiss?: () => void,
 ): void {
-  const isUrgent = stage === 2;
-  const headline =
-    stage === 1
-      ? `${education.patternLabel} — heating up`
-      : `${education.patternLabel} — last call`;
-
-  let sub = `${education.metricLine}\n${education.insightLine}`;
-  if (isUrgent) {
-    sub = demoMode
-      ? `${education.metricLine}\nDemo mode — no lockout. Still, walk it off.`
-      : `${education.metricLine}\nYour ${sessionCapMinutes ?? '?'} min line is armed. Next spike locks the tab.`;
-  }
-
-  showPageToast(BANNER_ROOT_ID, {
-    tone: isUrgent ? 'heat' : 'pulse',
-    tag: isUrgent ? 'TC · LAST CALL' : 'TC · PULSE CHECK',
-    headline,
-    sub,
-  });
+  showTiltWarningOverlay(education, stage, demoMode, sessionCapMinutes, onDismiss);
 }
 
 export function dismissTiltWarningBanner(): void {
-  dismissPageToast(BANNER_ROOT_ID);
+  dismissTiltWarningOverlay();
 }

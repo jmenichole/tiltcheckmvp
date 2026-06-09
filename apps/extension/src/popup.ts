@@ -234,12 +234,9 @@ async function render(): Promise<void> {
     <p class="msg" id="tc-popup-msg"></p>
     <div class="actions">
       <button type="button" class="btn btn-primary" id="tc-sync">Sync</button>
-      <button type="button" class="btn btn-secondary" id="tc-connect">${loggedIn ? 'Dashboard' : 'Connect'}</button>
+      ${loggedIn ? `<button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>` : `<button type="button" class="btn btn-secondary" id="tc-connect">Connect</button>`}
     </div>
-    <div class="actions">
-      <button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>
-      <button type="button" class="btn btn-secondary" id="tc-line">My Line</button>
-    </div>
+    ${loggedIn ? `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-line">My Line</button></div>` : `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-settings">Settings</button></div>`}
     <p class="footer">No floating widget — click the TC icon anytime. Enforcement still fires on-tab.</p>
   `;
 
@@ -263,10 +260,6 @@ async function render(): Promise<void> {
   });
 
   document.getElementById('tc-connect')?.addEventListener('click', async () => {
-    if (loggedIn) {
-      chrome.tabs.create({ url: `${webBaseUrl()}/dashboard` });
-      return;
-    }
     const api = await resolveApiBaseUrl();
     chrome.windows.create({
       url: `${api}/auth/discord/login?source=ext`,

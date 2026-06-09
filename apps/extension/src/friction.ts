@@ -44,7 +44,7 @@ export function triggerFrictionScreen(opts: FrictionScreenOptions): void {
   const root = document.createElement('div');
   root.id = FRICTION_ROOT_ID;
   root.style.cssText =
-    'position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;user-select:none;background:rgba(0,0,0,.85);color:#fff;font:15px/1.5 system-ui,-apple-system,sans-serif;animation:tiltcheck-friction-in .35s ease-out';
+    'position:fixed;inset:0;z-index:2147483646;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;user-select:none;background:#000;color:#fff;font:15px/1.5 system-ui,-apple-system,sans-serif;animation:tiltcheck-friction-in .35s ease-out';
 
   const snoozeBtn = opts.onSnooze
     ? `<button type="button" id="tiltcheck-friction-snooze" style="margin:1.25rem 0 0;padding:.75rem 1.25rem;border-radius:8px;border:1px solid rgba(23,195,178,.55);background:transparent;color:#17c3b2;font:inherit;font-size:13px;font-weight:600;cursor:pointer">Use my one snooze</button>

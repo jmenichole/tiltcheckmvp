@@ -9,6 +9,14 @@ import {
   showTiltWarningBanner,
 } from './tilt-warnings.js';
 import {
+  dismissGameWarnOverlay,
+  showGameWarnOverlay,
+} from './game-warn-overlay.js';
+import {
+  maybeShowSessionPactAck,
+  isSessionPactAcknowledged,
+} from './session-pact-ack.js';
+import {
   getAutoVaultSiteName,
   getAutoVaultHost,
   startAutoVaultIfSupported,
@@ -25,6 +33,8 @@ import type { GameMatchStatus } from './game-exclusion-watcher.js';
 import { installContentBridge } from './content-bridge.js';
 
 const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
+const PACT_ACK_DELAY_MS = 900;
+let pactAckTimer: number | null = null;
 
 const hostname = window.location.hostname.toLowerCase();
 const autoVaultSiteName = getAutoVaultSiteName();
@@ -38,6 +48,7 @@ if (!excluded) {
   let riskProfile: RiskProfile = 'moderate';
   let loggedIn = false;
   let demoMode = true;
+  let username: string | undefined;
   let enforcementEnabled = false;
   let touchGrassCooldownUntil = 0;
   let saveStatus = '';
@@ -106,21 +117,20 @@ if (!excluded) {
   const gameWatcher = new GameExclusionWatcher({
     onStateChange: (state) => {
       if (state.status === 'warn' && state.matched) {
-        showPageToast(GAME_WARN_TOAST_ID, {
-          tone: 'heat',
-          tag: 'TC · GAME BLOCK',
-          headline: `${state.matched.label} is on your no-play list`,
-          sub: `Bounce in ${state.countdownSec ?? '?'}s or the tab locks.`,
-        });
+        showGameWarnOverlay(state.matched.label, state.countdownSec ?? 10);
       } else if (state.status === 'demo-banner' && state.matched) {
+        dismissGameWarnOverlay();
         showPageToast(GAME_WARN_TOAST_ID, {
           tone: 'demo',
           tag: 'TC · DEMO',
           headline: `Would block ${state.matched.label}`,
           sub: 'Turn off demo mode to enforce game blocks.',
         });
-      } else if (state.status !== 'blocked') {
-        dismissPageToast(GAME_WARN_TOAST_ID);
+      } else {
+        dismissGameWarnOverlay();
+        if (state.status !== 'blocked') {
+          dismissPageToast(GAME_WARN_TOAST_ID);
+        }
       }
 
       gameMatch = {
@@ -143,11 +153,37 @@ if (!excluded) {
     return typeof stored.tc_session_token === 'string' ? stored.tc_session_token : null;
   }
 
+  function scheduleSessionPactAck() {
+    if (pactAckTimer !== null) {
+      window.clearTimeout(pactAckTimer);
+      pactAckTimer = null;
+    }
+    if (isSessionPactAcknowledged() || !loggedIn) return;
+
+    pactAckTimer = window.setTimeout(() => {
+      pactAckTimer = null;
+      if (isSessionPactAcknowledged()) return;
+      const cap = getSessionCapConfig(vaultRules);
+      const capArmed =
+        loggedIn && !demoMode && vaultRules.some((r) => r.ruleType === 'session_cap' && r.enabled);
+      maybeShowSessionPactAck({
+        loggedIn,
+        demoMode,
+        username,
+        riskProfile,
+        cap,
+        capArmed,
+        gameExclusions,
+      });
+    }, PACT_ACK_DELAY_MS);
+  }
+
   function applyStoredState(stored: Record<string, unknown>) {
     vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
     gameExclusions = (stored.tc_game_exclusions as GameExclusionEntry[]) ?? [];
     loggedIn = Boolean(stored.tc_session_token);
     demoMode = !loggedIn || stored.tc_demo !== false;
+    username = typeof stored.tc_username === 'string' ? stored.tc_username : undefined;
     riskProfile = (stored.tc_risk_profile as RiskProfile) ?? 'moderate';
     detector.setProfile(riskProfile);
     enforcementEnabled =
@@ -155,6 +191,7 @@ if (!excluded) {
 
     gameWatcher.setExclusions(gameExclusions);
     pushLiveState();
+    scheduleSessionPactAck();
   }
 
   chrome.storage.onChanged.addListener((changes) => {
@@ -189,6 +226,7 @@ if (!excluded) {
       'tc_demo',
       'tc_risk_profile',
       'tc_game_exclusions',
+      'tc_username',
     ],
     (stored) => {
       applyStoredState(stored);
@@ -268,7 +306,9 @@ if (!excluded) {
       if (stage === 1 || stage === 2) {
         const cap = getSessionCapConfig(vaultRules);
         const education = formatTiltEducation(indicator, riskProfile);
-        showTiltWarningBanner(education, stage, demoMode, cap.durationMinutes);
+        showTiltWarningBanner(education, stage, demoMode, cap.durationMinutes, () => {
+          if (stage === 1) warningEscalation.acknowledgeStageOne();
+        });
       }
       return;
     }

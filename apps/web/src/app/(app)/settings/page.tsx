@@ -192,9 +192,6 @@ export default function SettingsPage() {
               </div>
             </div>
             <div className="settings-quick-links">
-              <Link href="/dashboard" className="btn btn-ghost btn-sm">
-                Open dashboard
-              </Link>
               <Link href="/extension" className="btn btn-ghost btn-sm">
                 Extension setup
               </Link>

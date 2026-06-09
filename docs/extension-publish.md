@@ -15,7 +15,7 @@ NEXT_PUBLIC_CHROME_WEB_STORE_URL=https://chromewebstore.google.com/detail/tiltch
 | **Unset or empty** | Nav install icon, hero CTAs, and `/extension` primary button → `/extension` with unpacked install steps |
 | **Set** | Install CTAs open the Chrome Web Store listing; `/extension` shows “Install from Chrome Web Store” |
 
-Extension popup footer link uses the same URL when baked at build:
+Extension **side panel** (v2.4+, Chrome 114+) opens docked on icon click like Trust Wallet. Footer link uses:
 
 ```bash
 EXTENSION_CWS_URL=https://chromewebstore.google.com/detail/tiltcheck/EXTENSION_ID
@@ -35,7 +35,7 @@ Do **not** commit a fake extension ID — leave defaults empty until the listing
    pnpm --filter @tiltcheck/extension build
    ```
 
-2. **Zip** `apps/extension/dist` for upload (manifest + bundled JS + popup HTML).
+2. **Zip** `apps/extension/dist` for upload (manifest + bundled JS + `sidepanel.html`).
 
 3. **Chrome Web Store Developer Dashboard** — create item, upload zip, fill listing copy, privacy, screenshots.
 

@@ -3,7 +3,10 @@ import { syncSettingsToStorage } from './settings-sync.js';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ tc_demo: true });
+  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 });
+
+void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
 async function syncUserConfig(token: string | null) {
   const [rules, settings] = await Promise.all([

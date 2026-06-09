@@ -49,7 +49,7 @@ export default function ExtensionPage() {
           <h1 className="landing-hero-title">Install TiltCheck</h1>
           <p className="landing-hero-subtitle">
             Block games you know are traps. Catch tilt when pacing shifts. Lock the tab at the line you
-            set — open the TC icon like Trust Wallet; protection runs quietly on casino tabs.
+            set — click the TC icon to open the side panel (like Trust Wallet); protection runs on casino tabs.
           </p>
           <div className="hero-actions">
             {cwsLive ? (

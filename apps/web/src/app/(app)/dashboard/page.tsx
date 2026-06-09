@@ -11,7 +11,7 @@ import {
   type LockoutStyle,
   type VaultPledgeSite,
 } from '@tiltcheck/shared';
-import DashboardProtectionAside from '@/components/DashboardProtectionAside';
+import DashboardCommandCenter from '@/components/DashboardCommandCenter';
 import DashboardTabBar from '@/components/DashboardTabBar';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
@@ -241,12 +241,10 @@ export default function DashboardPage() {
     <main className="public-page text-white dashboard-page">
       <section className="hero-surface dashboard-hero">
         <div className="landing-shell">
-          <span className="brand-eyebrow">Your command center</span>
-          <h1 className="brand-page-title">Dashboard</h1>
+          <span className="brand-eyebrow">Command center</span>
+          <h1 className="brand-page-title">My vault</h1>
           <p className="brand-lead">
-            {user
-              ? `${user.username} — block problem games, set your cap, let the extension enforce both.`
-              : 'Block problem games in Settings. Set your cap here. The extension enforces both on casino tabs.'}
+            Arm your line, block your traps, pledge the bag — then let the extension enforce it on-tab.
           </p>
 
           <DashboardTabBar active="vault" />
@@ -270,16 +268,31 @@ export default function DashboardPage() {
             />
           ) : null}
 
-          <div className="dashboard-layout dashboard-layout--vault">
-              <div className="dashboard-main">
-                <div className="public-page-section-heading">
+          <DashboardCommandCenter
+            username={user?.username}
+            capSynced={capSynced}
+            capMinutes={
+              sessionCapRule?.enabled
+                ? normalizeSessionCapConfig(sessionCapRule.config ?? {}).durationMinutes
+                : capSynced
+                  ? sessionCapMinutes
+                  : null
+            }
+            lockoutStyle={lockoutStyle}
+            gameExclusions={gameExclusions}
+            riskProfile={riskProfile}
+            pledgeActive={pledgeActive}
+            pledgeCountdown={pledgeCountdown}
+            onboardingComplete={onboardingComplete}
+            futureMeNote={futureMeNote}
+          />
+
+          <div className="dashboard-workspace">
+                <section id="my-line" className="dashboard-workspace__section">
+                <div className="dashboard-workspace__section-head">
                   <div>
                     <span className="brand-eyebrow">Past you pact</span>
                     <h2 className="public-page-section-heading__title">My Line</h2>
-                    <p className="public-page-section-heading__copy brand-lead">
-                      Your walk-away pact — lockout length, how hard the tab stops, and a note from past you.
-                      TiltCheck enforces what you saved here.
-                    </p>
                   </div>
                 </div>
 
@@ -392,15 +405,13 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+                </section>
 
-                <div className="public-page-section-heading" style={{ marginTop: '2.5rem' }}>
+                <section id="vault-pledge" className="dashboard-workspace__section">
+                <div className="dashboard-workspace__section-head">
                   <div>
                     <span className="brand-eyebrow">Vault pledge</span>
                     <h2 className="public-page-section-heading__title">Lock the vault bag</h2>
-                    <p className="public-page-section-heading__copy brand-lead">
-                      Stop the rinse — past you said don&apos;t pull from vault until the timer ends.
-                      Skim wins with AutoVault first, then pledge what stays in the vault.
-                    </p>
                   </div>
                 </div>
 
@@ -541,6 +552,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+                </section>
 
                 <div className="public-page-card dashboard-sync-card">
                   <p className="public-page-card__eyebrow">Extension sync</p>
@@ -573,22 +585,7 @@ export default function DashboardPage() {
                     )}
                   </p>
                 </div>
-              </div>
-
-              <DashboardProtectionAside
-                riskProfile={riskProfile}
-                gameExclusions={gameExclusions}
-                capMinutes={
-                  sessionCapRule?.enabled
-                    ? normalizeSessionCapConfig(sessionCapRule.config ?? {}).durationMinutes
-                    : capSynced
-                      ? sessionCapMinutes
-                      : null
-                }
-                capSynced={capSynced}
-                onboardingComplete={onboardingComplete}
-              />
-            </div>
+          </div>
 
         </div>
       </section>

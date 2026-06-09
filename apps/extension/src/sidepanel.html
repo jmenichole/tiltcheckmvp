@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TiltCheck</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        min-height: 100vh;
+        width: 100%;
+        background: #0a0c10;
+        color: #e6e6e6;
+        font: 13px/1.45 system-ui, -apple-system, sans-serif;
+      }
+      #shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        width: 100%;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+      #app {
+        flex: 1;
+        overflow-y: auto;
+        padding: 0 0 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shell">
+      <div id="app">Loading…</div>
+    </div>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

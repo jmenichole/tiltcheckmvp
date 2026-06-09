@@ -1,5 +1,5 @@
 import { TiltDetector, type RiskProfile } from './tilt-detector.js';
-import { triggerTouchGrassTimeout } from './enforcement.js';
+import { handleCriticalEnforcement } from './session-enforcement.js';
 import {
   TiltCheckSidebar,
   loadInitialPanelState,
@@ -127,6 +127,8 @@ if (!excluded) {
     getLoggedIn: () => loggedIn,
     getBlockDurationMs: () => sessionCapDurationMs(vaultRules),
     buildTouchGrassOpts: buildTouchGrassOptsForGame,
+    onCriticalEnforce: (opts) =>
+      handleCriticalEnforcement(getSessionCapConfig(vaultRules), opts, { forceTouchGrass: true }),
   });
 
   function updateLiveStats(indicators: ReturnType<TiltDetector['analyze']>) {
@@ -389,7 +391,10 @@ if (!excluded) {
     const durationMs = cap.durationMinutes * 60 * 1000;
     touchGrassCooldownUntil = Date.now() + durationMs + 5000;
     warningEscalation.reset();
-    triggerTouchGrassTimeout(buildTouchGrassOptsForIndicator(indicator));
+    handleCriticalEnforcement(
+      getSessionCapConfig(vaultRules),
+      buildTouchGrassOptsForIndicator(indicator),
+    );
     chrome.runtime.sendMessage({ type: 'enforcement-fired', indicator: indicator.type }).catch(() => {});
     sidebar?.update({ tiltWarning: warningEscalation.getState() });
   }

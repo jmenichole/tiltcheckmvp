@@ -201,8 +201,7 @@ export default function DashboardPage() {
                       Allow one snooze per session (opt-in)
                     </label>
                     <p className="public-page-card__copy" style={{ marginTop: '0.35rem' }}>
-                      When enabled, the first critical hit can show a snooze instead of an immediate lockout.
-                      Extension support ships in the next phase.
+                      When enabled, the first critical hit can show a snooze button on the friction screen.
                     </p>
                   </div>
 

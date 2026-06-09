@@ -1,6 +1,7 @@
 /** Full-viewport Touch Grass lockout — undismissable until timer ends. */
 
 import { webBaseUrl } from './config.js';
+import { pactLineHtml, pactNoteHtml, triggerCardHtml } from './pact-ui.js';
 
 const LOCKDOWN_ROOT_ID = 'tiltcheck-lockdown-root';
 const TIMER_ID = 'lockdown-timer';
@@ -15,12 +16,8 @@ export type TouchGrassOptions = {
   futureMeNote?: string;
 };
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+export function isTouchGrassActive(): boolean {
+  return overlayActive;
 }
 
 export function blockBettingUI(block: boolean): void {
@@ -47,14 +44,6 @@ export function triggerTouchGrassTimeout(opts: TouchGrassOptions): void {
   overlayActive = true;
   blockBettingUI(true);
 
-  const noteBlock = opts.futureMeNote
-    ? `<blockquote style="margin:0 0 1.25rem;max-width:26rem;padding:1rem 1.25rem;border-left:3px solid #17c3b2;border-radius:0 8px 8px 0;background:#12161e;color:#f3f4f6;font-size:1.05rem;font-weight:600;line-height:1.45;text-align:left">${escapeHtml(opts.futureMeNote)}</blockquote>`
-    : '';
-
-  const insightBlock = opts.triggerInsight
-    ? `<p style="margin:.5rem 0 0;font-size:12px;color:#9ca3af;line-height:1.45">${escapeHtml(opts.triggerInsight)}</p>`
-    : '';
-
   const root = document.createElement('div');
   root.id = LOCKDOWN_ROOT_ID;
   root.style.cssText =
@@ -65,16 +54,12 @@ export function triggerTouchGrassTimeout(opts: TouchGrassOptions): void {
       @keyframes tiltcheck-timer-pulse{0%,100%{opacity:1}50%{opacity:.82}}
     </style>
     <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,#17c3b2,transparent)"></div>
-    ${noteBlock}
-    <p style="margin:0 0 1rem;font-size:14px;font-weight:600;color:#17c3b2">Your line: ${opts.durationMinutes} min · you set this in Settings</p>
+    ${pactNoteHtml(opts.futureMeNote)}
+    ${pactLineHtml(opts.durationMinutes)}
     <p style="margin:0 0 1rem;letter-spacing:.2em;font:700 9px/1 ui-monospace,monospace;color:#6b7280;text-transform:uppercase">TiltCheck · Made for degens</p>
     <h1 style="margin:0;font:900 clamp(2rem,8vw,3.5rem)/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 0 40px rgba(23,195,178,.35)">Touch Grass</h1>
     <p style="margin:.75rem 0 0;font-size:1.05rem;font-weight:600;color:#f3f4f6">Tab locked before the hole got deeper.</p>
-    <div style="margin:1.25rem 0 0;max-width:26rem;padding:1rem 1.25rem;border:1px solid rgba(23,195,178,.35);border-radius:8px;background:#12161e;color:#e6e6e6;line-height:1.55;text-align:left">
-      <span style="display:block;margin-bottom:.35rem;font:700 10px/1 ui-monospace,monospace;letter-spacing:.15em;color:#5eead4;text-transform:uppercase">What triggered this</span>
-      <p style="margin:0;font-size:14px;color:#f3f4f6">${escapeHtml(opts.triggerReason)}</p>
-      ${insightBlock}
-    </div>
+    ${triggerCardHtml(opts.triggerReason, opts.triggerInsight)}
     <p id="${TIMER_ID}" style="margin:1.5rem 0 0;font:700 clamp(3rem,12vw,5rem)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#17c3b2;animation:tiltcheck-timer-pulse 2.5s ease-in-out infinite">--:--</p>
     <p style="margin:1rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Timer hits zero — table unlocks. <a href="${webBaseUrl()}/touch-grass" target="_blank" rel="noopener" style="color:#17c3b2">Break ideas</a></p>
   `;

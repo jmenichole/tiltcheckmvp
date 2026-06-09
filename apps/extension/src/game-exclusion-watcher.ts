@@ -1,7 +1,6 @@
 import { matchGameExclusion, normalizeHaystack } from '@tiltcheck/shared';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
 import type { TouchGrassOptions } from './enforcement.js';
-import { triggerTouchGrassTimeout } from './enforcement.js';
 
 export type GameMatchStatus = 'clear' | 'warn' | 'blocked' | 'demo-banner';
 
@@ -17,6 +16,7 @@ export type GameExclusionWatcherOptions = {
   getLoggedIn: () => boolean;
   getBlockDurationMs: () => number;
   buildTouchGrassOpts: (match: GameExclusionEntry) => TouchGrassOptions;
+  onCriticalEnforce: (opts: TouchGrassOptions) => void;
 };
 
 const WARN_ESCALATE_MS = 10_000;
@@ -91,7 +91,7 @@ export class GameExclusionWatcher {
     this.resetWarn();
 
     if (!this.options.getDemoMode() && this.options.getLoggedIn()) {
-      triggerTouchGrassTimeout(this.options.buildTouchGrassOpts(match));
+      this.options.onCriticalEnforce(this.options.buildTouchGrassOpts(match));
     }
 
     this.emit({ matched: match, status: 'blocked' });

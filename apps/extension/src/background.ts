@@ -2,11 +2,7 @@ import { fetchVaultRules } from './vault-sync.js';
 import { syncSettingsToStorage } from './settings-sync.js';
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({
-    tc_demo: true,
-    tc_panel_expanded: false,
-    tc_panel_always_on: false,
-  });
+  chrome.storage.local.set({ tc_demo: true });
 });
 
 async function syncUserConfig(token: string | null) {
@@ -45,6 +41,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   if (message?.type === 'enforcement-fired') {
     console.info('[TiltCheck] Enforcement fired:', message.indicator);
+    sendResponse({ ok: true });
+  }
+  if (message?.type === 'tc-badge') {
+    const show = Boolean(message.show);
+    void chrome.action.setBadgeText({ text: show ? '!' : '' });
+    if (show) void chrome.action.setBadgeBackgroundColor({ color: '#ff5c5c' });
     sendResponse({ ok: true });
   }
   return false;

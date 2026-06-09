@@ -1,14 +1,8 @@
 import { TiltDetector, type RiskProfile } from './tilt-detector.js';
 import { handleCriticalEnforcement } from './session-enforcement.js';
-import {
-  TiltCheckSidebar,
-  loadInitialPanelState,
-  type PanelState,
-} from './sidebar.js';
-import { sessionCapDurationMs, getSessionCapConfig, pushSessionCapMinutes, type VaultRuleSnapshot } from './vault-sync.js';
+import { sessionCapDurationMs, getSessionCapConfig, type VaultRuleSnapshot } from './vault-sync.js';
 import { GameExclusionWatcher } from './game-exclusion-watcher.js';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
-import { resolveApiBaseUrl } from './config.js';
 import {
   TiltWarningEscalation,
   dismissTiltWarningBanner,
@@ -16,17 +10,19 @@ import {
 } from './tilt-warnings.js';
 import {
   getAutoVaultSiteName,
-  setAutoVaultSidebarMount,
+  getAutoVaultHost,
   startAutoVaultIfSupported,
 } from './autovault/bootstrap.js';
 import { formatGameBlockEducation, formatTiltEducation } from './tilt-education.js';
 import { dismissPageToast, showPageToast } from './page-toast.js';
 import type { TouchGrassOptions } from './enforcement.js';
-import { maybeShowSessionPactBanner } from './session-pact-banner.js';
 import { observeTiltPatterns } from './tilt-pattern-learn.js';
 import { dismissTiltSuggestionToast, showTiltSuggestionToast } from './tilt-suggestion-toast.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
 import type { ExclusionSuggestion } from '@tiltcheck/shared';
+import { formatAlertSummary, publishLiveState } from './alert-summary.js';
+import type { GameMatchStatus } from './game-exclusion-watcher.js';
+import { installContentBridge } from './content-bridge.js';
 
 const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
 
@@ -37,10 +33,6 @@ const excluded =
   (hostname === 'localhost' && ['3000', '3001'].includes(window.location.port));
 
 if (!excluded) {
-  const host = document.createElement('div');
-  host.id = 'tiltcheck-sidebar-host';
-  document.documentElement.appendChild(host);
-
   let vaultRules: VaultRuleSnapshot[] = [];
   let gameExclusions: GameExclusionEntry[] = [];
   let riskProfile: RiskProfile = 'moderate';
@@ -48,20 +40,17 @@ if (!excluded) {
   let demoMode = true;
   let enforcementEnabled = false;
   let touchGrassCooldownUntil = 0;
-  let panelExpanded = false;
-  let panelAlwaysOn = false;
-  let panelWidth = 220;
-  let panelHeight = 300;
-  let userCollapsedPanel = false;
-  let userManuallyExpandedPanel = false;
-  let panelAutoExpandedByWarn = false;
   let saveStatus = '';
   let lastShownSuggestionLabel: string | null = null;
   let activeTiltSuggestion: ExclusionSuggestion | null = null;
+  let gameMatch = {
+    status: 'clear' as GameMatchStatus,
+    label: undefined as string | undefined,
+    countdownSec: undefined as number | undefined,
+  };
 
   const detector = new TiltDetector(riskProfile);
   const warningEscalation = new TiltWarningEscalation();
-  let sidebar: TiltCheckSidebar | null = null;
 
   function buildTouchGrassOptsForIndicator(
     indicator: ReturnType<TiltDetector['analyze']>[number],
@@ -89,6 +78,31 @@ if (!excluded) {
     };
   }
 
+  function pushLiveState() {
+    const indicators = detector.analyze();
+    const latest = indicators.length > 0 ? indicators[indicators.length - 1] : null;
+    publishLiveState({
+      alertSummary: formatAlertSummary({
+        gameMatch: {
+          status: gameMatch.status,
+          label: gameMatch.label,
+          countdownSec: gameMatch.countdownSec,
+        },
+        tiltWarning: warningEscalation.getState(),
+        liveStats: { clicksIn5s: detector.getClicksIn5s(), latestIndicator: latest },
+        riskProfile,
+      }),
+      clicksIn5s: detector.getClicksIn5s(),
+      gameMatchStatus: gameMatch.status,
+      gameMatchLabel: gameMatch.label,
+      tiltStage: warningEscalation.getState().stage,
+      tiltSuggestion: activeTiltSuggestion,
+      saveStatus,
+      autoVaultSite: autoVaultSiteName,
+      updatedAt: Date.now(),
+    });
+  }
+
   const gameWatcher = new GameExclusionWatcher({
     onStateChange: (state) => {
       if (state.status === 'warn' && state.matched) {
@@ -109,26 +123,12 @@ if (!excluded) {
         dismissPageToast(GAME_WARN_TOAST_ID);
       }
 
-      sidebar?.update({
-        gameMatch: {
-          status: state.status,
-          label: state.matched?.label,
-          countdownSec: state.countdownSec,
-        },
-      });
-      if (state.status === 'warn' && !panelExpanded && !userCollapsedPanel) {
-        panelExpanded = true;
-        panelAutoExpandedByWarn = true;
-        sidebar?.update({ expanded: true });
-      }
-      if (state.status === 'clear') {
-        userCollapsedPanel = false;
-        if (panelAutoExpandedByWarn && !panelAlwaysOn && !userManuallyExpandedPanel && panelExpanded) {
-          panelExpanded = false;
-          sidebar?.update({ expanded: false });
-        }
-        panelAutoExpandedByWarn = false;
-      }
+      gameMatch = {
+        status: state.status,
+        label: state.matched?.label,
+        countdownSec: state.countdownSec,
+      };
+      pushLiveState();
     },
     getDemoMode: () => demoMode,
     getLoggedIn: () => loggedIn,
@@ -138,180 +138,9 @@ if (!excluded) {
       handleCriticalEnforcement(getSessionCapConfig(vaultRules), opts, { forceTouchGrass: true }),
   });
 
-  function updateLiveStats(indicators: ReturnType<TiltDetector['analyze']>) {
-    const latest = indicators.length > 0 ? indicators[indicators.length - 1] : null;
-    sidebar?.update({
-      liveStats: {
-        clicksIn5s: detector.getClicksIn5s(),
-        latestIndicator: latest,
-      },
-    });
-  }
-
-  function buildPanelState(base: Partial<PanelState>): PanelState {
-    const cap = getSessionCapConfig(vaultRules);
-    return {
-      loggedIn,
-      demoMode,
-      username: base.username,
-      riskProfile,
-      sessionCapArmed: enforcementEnabled,
-      sessionCapMinutes: cap.durationMinutes,
-      sessionCapLockoutStyle: cap.lockoutStyle,
-      gameExclusions,
-      gameMatch: base.gameMatch ?? { status: 'clear' },
-      liveStats: base.liveStats ?? { clicksIn5s: 0, latestIndicator: null },
-      tiltWarning: warningEscalation.getState(),
-      tiltSuggestion: activeTiltSuggestion,
-      saveStatus,
-      expanded: panelExpanded,
-      alwaysOn: panelAlwaysOn,
-      panelWidth: base.panelWidth ?? panelWidth,
-      panelHeight: base.panelHeight ?? panelHeight,
-      position: base.position ?? { left: 0, top: 0 },
-      autoVaultSite: autoVaultSiteName,
-    };
-  }
-
   async function getToken(): Promise<string | null> {
     const stored = await chrome.storage.local.get(['tc_session_token']);
     return typeof stored.tc_session_token === 'string' ? stored.tc_session_token : null;
-  }
-
-  async function initSidebar() {
-    const initial = await loadInitialPanelState();
-    panelAlwaysOn = initial.alwaysOn ?? false;
-    panelExpanded = initial.expanded ?? false;
-    userManuallyExpandedPanel = panelAlwaysOn || panelExpanded;
-    panelWidth = initial.panelWidth ?? 220;
-    panelHeight = initial.panelHeight ?? 300;
-    riskProfile = initial.riskProfile ?? 'moderate';
-    gameExclusions = initial.gameExclusions ?? [];
-    detector.setProfile(riskProfile);
-
-    sidebar = new TiltCheckSidebar(host, buildPanelState(initial as PanelState), {
-      onLogin: () => openDiscordLogin(),
-      onSync: () => {
-        saveStatus = 'Syncing…';
-        sidebar?.update({ saveStatus });
-        chrome.runtime
-          .sendMessage({ type: 'sync-vault' })
-          .then(() => {
-            saveStatus = 'Synced.';
-            sidebar?.update({ saveStatus });
-          })
-          .catch(() => {
-            saveStatus = 'Sync failed.';
-            sidebar?.update({ saveStatus });
-          });
-      },
-      onToggleExpand: () => {
-        panelExpanded = !panelExpanded;
-        if (panelExpanded) {
-          userManuallyExpandedPanel = true;
-          userCollapsedPanel = false;
-          panelAutoExpandedByWarn = false;
-        } else {
-          userManuallyExpandedPanel = false;
-          userCollapsedPanel = true;
-        }
-        if (!panelAlwaysOn) {
-          chrome.storage.local.set({ tc_panel_expanded: panelExpanded });
-        }
-        sidebar?.update({ expanded: panelExpanded });
-      },
-      onToggleAlwaysOn: () => {
-        panelAlwaysOn = !panelAlwaysOn;
-        if (panelAlwaysOn) {
-          panelExpanded = true;
-          userManuallyExpandedPanel = true;
-          userCollapsedPanel = false;
-          panelAutoExpandedByWarn = false;
-          chrome.storage.local.set({
-            tc_panel_always_on: true,
-            tc_panel_expanded: true,
-          });
-        } else {
-          panelExpanded = false;
-          userManuallyExpandedPanel = false;
-          panelAutoExpandedByWarn = false;
-          userCollapsedPanel = false;
-          chrome.storage.local.set({
-            tc_panel_always_on: false,
-            tc_panel_expanded: false,
-          });
-        }
-        sidebar?.update({ alwaysOn: panelAlwaysOn, expanded: panelExpanded });
-      },
-      onLayoutChange: (layout) => {
-        const patch: Record<string, unknown> = {};
-        if (layout.panelWidth !== undefined) {
-          panelWidth = layout.panelWidth;
-          patch.tc_panel_width = layout.panelWidth;
-        }
-        if (layout.panelHeight !== undefined) {
-          panelHeight = layout.panelHeight;
-          patch.tc_panel_height = layout.panelHeight;
-        }
-        if (layout.position) patch.tc_panel_position = layout.position;
-        if (Object.keys(patch).length > 0) chrome.storage.local.set(patch);
-      },
-      onAvMountReady: (mount) => {
-        setAutoVaultSidebarMount(mount);
-      },
-      onSaveLockoutMinutes: async (minutes) => {
-        const token = await getToken();
-        if (!token) {
-          saveStatus = 'Connect first.';
-          sidebar?.update({ saveStatus });
-          return;
-        }
-        saveStatus = 'Saving…';
-        sidebar?.update({ saveStatus });
-        const result = await pushSessionCapMinutes(token, minutes);
-        if (!result.ok) {
-          saveStatus = result.error;
-          sidebar?.update({ saveStatus });
-          return;
-        }
-        vaultRules = result.rules;
-        enforcementEnabled =
-          loggedIn && !demoMode && vaultRules.some((r) => r.ruleType === 'session_cap' && r.enabled);
-        saveStatus = 'Saved.';
-        sidebar?.update({
-          saveStatus,
-          sessionCapArmed: enforcementEnabled,
-          sessionCapMinutes: minutes,
-        });
-      },
-    });
-    if (autoVaultSiteName) startAutoVaultIfSupported();
-  }
-
-  async function openDiscordLogin() {
-    const api = await resolveApiBaseUrl();
-    const url = `${api}/auth/discord/login?source=ext`;
-    const popup = window.open(url, 'tiltcheck-discord-auth', 'width=520,height=720');
-    if (!popup) window.open(url, '_blank');
-  }
-
-  let sessionBannerTimer: number | null = null;
-
-  function scheduleSessionPactBanner(stored: Record<string, unknown>) {
-    if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
-    sessionBannerTimer = window.setTimeout(() => {
-      sessionBannerTimer = null;
-      const cap = getSessionCapConfig(vaultRules);
-      maybeShowSessionPactBanner({
-        loggedIn,
-        demoMode,
-        username: stored.tc_username as string | undefined,
-        riskProfile,
-        cap,
-        capArmed: enforcementEnabled,
-        gameExclusions,
-      });
-    }, 900);
   }
 
   function applyStoredState(stored: Record<string, unknown>) {
@@ -325,23 +154,8 @@ if (!excluded) {
       loggedIn && !demoMode && vaultRules.some((r) => r.ruleType === 'session_cap' && r.enabled);
 
     gameWatcher.setExclusions(gameExclusions);
-
-    const cap = getSessionCapConfig(vaultRules);
-    sidebar?.update({
-      loggedIn,
-      demoMode,
-      username: stored.tc_username as string | undefined,
-      riskProfile,
-      sessionCapArmed: enforcementEnabled,
-      sessionCapMinutes: cap.durationMinutes,
-      sessionCapLockoutStyle: cap.lockoutStyle,
-      gameExclusions,
-    });
-
-    scheduleSessionPactBanner(stored);
+    pushLiveState();
   }
-
-  void initSidebar();
 
   chrome.storage.onChanged.addListener((changes) => {
     if (
@@ -385,6 +199,8 @@ if (!excluded) {
   );
 
   gameWatcher.start();
+  if (autoVaultSiteName) startAutoVaultIfSupported();
+  installContentBridge(getAutoVaultHost);
 
   async function maybeSuggestGameBlock(indicators: ReturnType<TiltDetector['analyze']>) {
     if (!loggedIn) return;
@@ -392,12 +208,12 @@ if (!excluded) {
     if (!suggestion) {
       if (activeTiltSuggestion) {
         activeTiltSuggestion = null;
-        sidebar?.update({ tiltSuggestion: null });
+        pushLiveState();
       }
       return;
     }
     activeTiltSuggestion = suggestion;
-    sidebar?.update({ tiltSuggestion: suggestion });
+    pushLiveState();
     if (suggestion.label === lastShownSuggestionLabel) return;
     lastShownSuggestionLabel = suggestion.label;
     showTiltSuggestionToast(suggestion, {
@@ -405,15 +221,15 @@ if (!excluded) {
         const token = await getToken();
         if (!token) {
           saveStatus = 'Connect first.';
-          sidebar?.update({ saveStatus });
+          pushLiveState();
           return;
         }
         saveStatus = 'Adding block…';
-        sidebar?.update({ saveStatus });
+        pushLiveState();
         const result = await pushSuggestedGameExclusion(token, label, 'warn');
         if (!result.ok) {
           saveStatus = result.error;
-          sidebar?.update({ saveStatus });
+          pushLiveState();
           return;
         }
         gameExclusions = result.gameExclusions;
@@ -422,26 +238,25 @@ if (!excluded) {
         lastShownSuggestionLabel = null;
         dismissTiltSuggestionToast();
         saveStatus = `Added ${label} (warn).`;
-        sidebar?.update({ gameExclusions, tiltSuggestion: null, saveStatus });
+        pushLiveState();
       },
     });
   }
 
   function handleTiltIndicators(indicators: ReturnType<TiltDetector['analyze']>) {
-    updateLiveStats(indicators);
     void maybeSuggestGameBlock(indicators);
 
     if (!enforcementEnabled) {
       warningEscalation.reset();
       dismissTiltWarningBanner();
-      sidebar?.update({ tiltWarning: warningEscalation.getState() });
+      pushLiveState();
       return;
     }
 
     if (Date.now() < touchGrassCooldownUntil) return;
 
     const { action, indicator } = warningEscalation.evaluate(indicators, riskProfile, demoMode);
-    sidebar?.update({ tiltWarning: warningEscalation.getState() });
+    pushLiveState();
 
     if (action === 'none' || !indicator) {
       dismissTiltWarningBanner();
@@ -468,7 +283,7 @@ if (!excluded) {
       buildTouchGrassOptsForIndicator(indicator),
     );
     chrome.runtime.sendMessage({ type: 'enforcement-fired', indicator: indicator.type }).catch(() => {});
-    sidebar?.update({ tiltWarning: warningEscalation.getState() });
+    pushLiveState();
   }
 
   document.addEventListener(

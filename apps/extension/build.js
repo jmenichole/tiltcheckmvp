@@ -57,7 +57,15 @@ async function build() {
     format: 'esm',
   });
 
+  await esbuild.build({
+    ...sharedBuild,
+    entryPoints: [path.join(__dirname, 'src/popup.ts')],
+    outfile: path.join(dist, 'popup.js'),
+    format: 'esm',
+  });
+
   await fs.copyFile(path.join(__dirname, 'src/manifest.json'), path.join(dist, 'manifest.json'));
+  await fs.copyFile(path.join(__dirname, 'src/popup.html'), path.join(dist, 'popup.html'));
   console.log('Extension built to dist/');
 }
 

@@ -4,7 +4,7 @@ const setupSteps = [
   {
     step: '01',
     title: 'Install the extension',
-    copy: 'Add TiltCheck from the Chrome Web Store. It runs read-only on casino tabs — no wallet access.',
+    copy: 'Add TiltCheck from the Chrome Web Store. Click the toolbar icon — no floating widget on casino pages.',
   },
   {
     step: '02',
@@ -32,7 +32,7 @@ export default function ExtensionPage() {
           <h1 className="landing-hero-title">Install TiltCheck</h1>
           <p className="landing-hero-subtitle">
             Block games you know are traps. Catch tilt when pacing shifts. Lock the tab at the line you
-            set — all read-only on casino sites.
+            set — open the TC icon like Trust Wallet; protection runs quietly on casino tabs.
           </p>
           <div className="hero-actions">
             <a

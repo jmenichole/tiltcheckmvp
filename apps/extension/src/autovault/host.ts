@@ -122,7 +122,58 @@ export class AutoVaultHost {
       this.ui?.render();
     });
 
+    if (this.onboarded && this.lastRunning) {
+      this.engine.start();
+      this.sessionWatch.start();
+    }
+
     console.log(LOG_PREFIX, `Engines ready for ${site.name}`);
+  }
+
+  async getSnapshot(): Promise<{
+    site: string;
+    onboarded: boolean;
+    running: boolean;
+    vaultedLabel: string;
+    saveAmount: number;
+  } | null> {
+    if (!this.site || !this.engine) return null;
+    return {
+      site: this.site.name,
+      onboarded: this.onboarded,
+      running: this.engine.isRunning(),
+      vaultedLabel: this.engine.formatVaulted(),
+      saveAmount: getConfig().saveAmount,
+    };
+  }
+
+  async setMasterRunning(on: boolean): Promise<void> {
+    if (!this.engine || !this.onboarded) return;
+    if (on) {
+      this.engine.start();
+      this.sessionWatch?.start();
+      await setLastRunning(true);
+      this.lastRunning = true;
+    } else {
+      this.engine.stop();
+      await setLastRunning(false);
+      this.lastRunning = false;
+    }
+    this.ui?.render();
+  }
+
+  async completeOnboard(): Promise<void> {
+    if (!this.engine) return;
+    await setOnboarded();
+    this.onboarded = true;
+    await setLastRunning(true);
+    this.lastRunning = true;
+    this.sessionWatch?.start();
+    this.engine.start();
+    if (this.mountEl) {
+      this.ui?.destroy();
+      this.ui = this.createUi(this.mountEl);
+    }
   }
 
   private createUi(mount: HTMLElement): AutoVaultUiApi {

@@ -5,16 +5,13 @@ const LOG_PREFIX = '[TiltCheck AutoVault]';
 
 let host: AutoVaultHost | null = null;
 let started = false;
-let pendingMount: HTMLElement | null = null;
 
 export function getAutoVaultSiteName(): string | null {
   return detectAutoVaultSite()?.name ?? null;
 }
 
-/** Mount AutoVault UI inside the TC sidebar panel. */
-export function setAutoVaultSidebarMount(el: HTMLElement | null): void {
-  pendingMount = el;
-  host?.setMountElement(el);
+export function getAutoVaultHost(): AutoVaultHost | null {
+  return host;
 }
 
 export function startAutoVaultIfSupported(): void {
@@ -27,7 +24,6 @@ export function startAutoVaultIfSupported(): void {
   const scheduleStart = () => {
     if (!document.body) return;
     void host?.start().then(() => {
-      if (pendingMount) host?.setMountElement(pendingMount);
       console.log(LOG_PREFIX, `Started on ${site.name}`);
     });
   };
@@ -47,6 +43,5 @@ export function startAutoVaultIfSupported(): void {
     host?.destroy();
     host = null;
     started = false;
-    pendingMount = null;
   });
 }

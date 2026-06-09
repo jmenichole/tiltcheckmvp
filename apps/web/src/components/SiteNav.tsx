@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { apiFetch } from '@/lib/api';
 import { extensionInstallHref, isChromeWebStoreLive } from '@/lib/extension-install';
+import { notifyExtensionLogout } from '@/lib/onboarding';
 import { NAV_DESKTOP_LINKS, NAV_MENU_GROUPS, NAV_QUICK_LINKS } from '@/lib/nav-menu';
 
 type NavUser = { username: string; avatarUrl: string | null } | null;
@@ -86,6 +87,7 @@ export default function SiteNav() {
 
   async function handleLogout() {
     await apiFetch('/auth/logout', { method: 'POST' });
+    notifyExtensionLogout();
     setUser(null);
     closeMenu();
     router.push('/');

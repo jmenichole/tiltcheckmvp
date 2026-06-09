@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TiltCheck",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Block problem games, catch tilt, skim wins to vault on Stake/nuts, and lock the tab at your line.",
   "permissions": ["storage", "activeTab", "sidePanel", "windows"],
   "host_permissions": ["<all_urls>"],

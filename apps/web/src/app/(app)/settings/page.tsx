@@ -7,6 +7,7 @@ import type { GameExclusionEntry } from '@tiltcheck/shared';
 import DashboardTabBar from '@/components/DashboardTabBar';
 import GameExclusionEditor from '@/components/GameExclusionEditor';
 import { apiFetch } from '@/lib/api';
+import { notifyExtensionLogout } from '@/lib/onboarding';
 
 type RiskProfile = 'conservative' | 'moderate' | 'degen';
 
@@ -197,6 +198,7 @@ export default function SettingsPage() {
 
   async function handleLogout() {
     await apiFetch('/auth/logout', { method: 'POST' });
+    notifyExtensionLogout();
     router.push('/');
     router.refresh();
   }

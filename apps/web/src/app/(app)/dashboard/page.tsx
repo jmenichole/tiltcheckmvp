@@ -15,6 +15,7 @@ import DashboardCommandCenter from '@/components/DashboardCommandCenter';
 import DashboardTabBar from '@/components/DashboardTabBar';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { apiFetch } from '@/lib/api';
+import { dismissOnboardingWizard, isOnboardingWizardDismissed } from '@/lib/onboarding';
 
 interface VaultRule {
   id: string;
@@ -73,7 +74,7 @@ export default function DashboardPage() {
       setGameExclusions(s.gameExclusions ?? []);
       setRiskProfile(s.riskProfile ?? 'moderate');
       setOnboardingComplete(Boolean(s.onboardingCompletedAt));
-      setShowWizard(!s.onboardingCompletedAt);
+      setShowWizard(!s.onboardingCompletedAt && !isOnboardingWizardDismissed());
     }
   }
 
@@ -111,15 +112,9 @@ export default function DashboardPage() {
     });
   }, []);
 
-  async function skipOnboarding() {
-    const res = await apiFetch('/user/settings', {
-      method: 'PATCH',
-      body: JSON.stringify({ onboardingCompletedAt: new Date().toISOString() }),
-    });
-    if (res.ok) {
-      setShowWizard(false);
-      setOnboardingComplete(true);
-    }
+  function skipOnboarding() {
+    dismissOnboardingWizard();
+    setShowWizard(false);
   }
 
   async function refreshVault() {

@@ -13,18 +13,22 @@ export interface VaultRuleSnapshot {
   config: Record<string, unknown>;
 }
 
-export async function fetchVaultRules(token: string | null): Promise<VaultRuleSnapshot[]> {
-  if (!token) return [];
+export type VaultRulesFetchResult =
+  | { ok: true; rules: VaultRuleSnapshot[] }
+  | { ok: false };
+
+export async function fetchVaultRules(token: string | null): Promise<VaultRulesFetchResult> {
+  if (!token) return { ok: false };
   try {
     const res = await fetch(`${apiBaseUrl()}/vault`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: 'include',
     });
-    if (!res.ok) return [];
+    if (!res.ok) return { ok: false };
     const data = (await res.json()) as { rules?: VaultRuleSnapshot[] };
-    return (data.rules ?? []).filter((r) => r.enabled);
+    return { ok: true, rules: (data.rules ?? []).filter((r) => r.enabled) };
   } catch {
-    return [];
+    return { ok: false };
   }
 }
 

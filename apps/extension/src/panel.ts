@@ -280,6 +280,7 @@ async function render(): Promise<void> {
         <button type="button" class="btn btn-primary" id="tc-sync">Sync rules</button>
         ${loggedIn ? `<button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>` : `<button type="button" class="btn btn-secondary" id="tc-connect">Connect Discord</button>`}
       </div>
+      ${loggedIn ? `<button type="button" class="btn btn-ghost" id="tc-disconnect" style="width:100%;margin-bottom:8px;font-size:11px">Disconnect extension</button>` : ''}
       ${loggedIn ? '' : `<p class="copy">Connect to sync game blocks, tilt sensitivity, and your exit line.</p>`}
     </div>
     <footer class="panel-footer">
@@ -297,11 +298,23 @@ async function render(): Promise<void> {
     chrome.runtime.sendMessage({ type: 'sync-vault' }, (res) => {
       if (!res?.ok) {
         setMsg('Sync failed.');
+      } else if (loggedIn && res.vaultSynced === false && res.settingsSynced === false) {
+        setMsg('Couldn\'t reach account — check connection and try again.');
+      } else if (loggedIn && res.vaultSynced === false) {
+        setMsg('Settings synced. Vault rules unchanged (fetch failed).');
       } else if (loggedIn && res.settingsSynced === false) {
-        setMsg('Couldn\'t load settings — reconnect or save on the dashboard.');
+        setMsg('Vault synced. Settings unchanged (fetch failed).');
       } else {
         setMsg('Synced.');
       }
+      void render();
+    });
+  });
+
+  document.getElementById('tc-disconnect')?.addEventListener('click', () => {
+    setMsg('Disconnecting…');
+    chrome.runtime.sendMessage({ type: 'tc-logout' }, () => {
+      setMsg('Disconnected.');
       void render();
     });
   });

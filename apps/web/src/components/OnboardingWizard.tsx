@@ -111,10 +111,12 @@ export function OnboardingWizard({
         config: { durationMinutes: sessionCapMinutes },
       }),
     });
-    setSaving(false);
     if (!vaultRes.ok) {
-      setError('Settings saved but session cap failed — set it on the dashboard.');
+      setSaving(false);
+      setError('Settings saved but session cap failed — set My Line on the dashboard, then try again.');
+      return;
     }
+    setSaving(false);
     onComplete();
   }
 

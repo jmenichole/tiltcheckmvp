@@ -24,6 +24,11 @@ export function isFrictionActive(): boolean {
   return frictionActive;
 }
 
+export function dismissFrictionIfActive(): void {
+  const root = document.getElementById(FRICTION_ROOT_ID);
+  if (root) dismissFriction(root);
+}
+
 function dismissFriction(root: HTMLElement, onComplete?: () => void) {
   root.remove();
   frictionActive = false;

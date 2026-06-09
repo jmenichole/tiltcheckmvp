@@ -1,6 +1,7 @@
 import type { SessionCapConfig } from '@tiltcheck/shared';
 import { triggerTouchGrassTimeout, type TouchGrassOptions } from './enforcement.js';
-import { isFrictionActive, triggerFrictionScreen } from './friction.js';
+import { isFrictionActive, triggerFrictionScreen, dismissFrictionIfActive } from './friction.js';
+import { isTouchGrassActive } from './enforcement.js';
 
 const FRICTION_KEY = 'tc_friction_used';
 const SNOOZE_KEY = 'tc_snooze_used';
@@ -15,7 +16,12 @@ export function handleCriticalEnforcement(
   opts: TouchGrassOptions,
   routing?: { forceTouchGrass?: boolean },
 ): void {
-  const touchGrass = () => triggerTouchGrassTimeout(opts);
+  if (isTouchGrassActive()) return;
+
+  const touchGrass = () => {
+    dismissFrictionIfActive();
+    triggerTouchGrassTimeout(opts);
+  };
 
   if (routing?.forceTouchGrass || pact.lockoutStyle === 'hard_stop') {
     touchGrass();

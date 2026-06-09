@@ -13,6 +13,12 @@
     "crawl:emails": "tsx scripts/email-crawler.ts",
     "test:e2e": "pnpm --filter @tiltcheck/web test:e2e"
   },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10",
+      "semver": ">=5.7.2"
+    }
+  },
   "devDependencies": {
     "@tiltcheck/db": "workspace:*",
     "@tiltcheck/trust": "workspace:*",

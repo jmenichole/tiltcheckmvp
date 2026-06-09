@@ -1,5 +1,10 @@
 import { fetchVaultRules } from './vault-sync.js';
 import { syncSettingsToStorage } from './settings-sync.js';
+import {
+  expandWindowForSidePanel,
+  registerSidePanelWindowResize,
+  restoreWindowAfterSidePanel,
+} from './side-panel-window.js';
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.set({ tc_demo: true });
@@ -7,6 +12,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
+registerSidePanelWindowResize();
 
 async function syncUserConfig(token: string | null) {
   const [rules, settings] = await Promise.all([
@@ -52,6 +58,26 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void chrome.action.setBadgeText({ text: show ? '!' : '' });
     if (show) void chrome.action.setBadgeBackgroundColor({ color: '#ff5c5c' });
     sendResponse({ ok: true });
+  }
+  if (message?.type === 'sidepanel-width' && typeof message.width === 'number') {
+    void (async () => {
+      const windowId = message.windowId as number | undefined;
+      if (windowId != null) {
+        await expandWindowForSidePanel(windowId, message.width as number);
+      }
+    })();
+    sendResponse({ ok: true });
+    return true;
+  }
+  if (message?.type === 'sidepanel-closed') {
+    void (async () => {
+      const windowId = message.windowId as number | undefined;
+      if (windowId != null) {
+        await restoreWindowAfterSidePanel(windowId);
+      }
+    })();
+    sendResponse({ ok: true });
+    return true;
   }
   return false;
 });

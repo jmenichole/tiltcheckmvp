@@ -179,7 +179,7 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
 
   const hint = document.createElement('p');
   hint.className = 'tc-av-hint';
-  hint.textContent = 'Skims green to vault while you play. Hold OFF 0.8s to hard-stop.';
+  hint.textContent = 'Skims wins to vault while you play. Hold OFF for a moment to turn off.';
 
   const body = document.createElement('div');
   body.style.display = 'flex';
@@ -228,7 +228,7 @@ export function mountAutoVaultUi(options: AutoVaultUiOptions): AutoVaultUiApi {
       const on = options.engine.isRunning();
       master.classList.toggle('on', on);
       master.classList.toggle('off', !on);
-      master.textContent = on ? 'AUTOVAULT ON' : 'AUTOVAULT OFF';
+      master.textContent = on ? 'AutoVault on' : 'AutoVault off';
     }
   }
 

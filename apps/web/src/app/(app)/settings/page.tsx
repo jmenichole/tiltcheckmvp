@@ -64,6 +64,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [gameExclusionsDirty, setGameExclusionsDirty] = useState(false);
   const initialLoadDone = useRef(false);
+  const gameExclusionsSaveGen = useRef(0);
+  const latestGameExclusionsRef = useRef<GameExclusionEntry[]>([]);
   const [pledgeDefaults, setPledgeDefaults] = useState<PledgeDefaults>({
     durationMinutes: 240,
     futureMeNote: '',
@@ -109,11 +111,13 @@ export default function SettingsPage() {
           const settingsData = await settingsRes.json();
           if (settingsData.settings) {
             const s = settingsData.settings;
+            const loadedExclusions = Array.isArray(s.gameExclusions) ? s.gameExclusions : [];
+            latestGameExclusionsRef.current = loadedExclusions;
             setSettings({
               riskProfile: s.riskProfile ?? 'moderate',
               notificationsEnabled: s.notificationsEnabled ?? true,
               demoMode: s.demoMode ?? false,
-              gameExclusions: Array.isArray(s.gameExclusions) ? s.gameExclusions : [],
+              gameExclusions: loadedExclusions,
             });
           }
         }
@@ -135,20 +139,30 @@ export default function SettingsPage() {
     setGameExclusionsDirty(false);
   }
 
-  async function saveGameExclusions(entries: GameExclusionEntry[]) {
+  async function saveGameExclusions(entries: GameExclusionEntry[], saveGen: number) {
     setStatus('Saving game blocks...');
     const res = await apiFetch('/user/settings', {
       method: 'PATCH',
       body: JSON.stringify({ gameExclusions: entries }),
     });
+    if (saveGen !== gameExclusionsSaveGen.current) {
+      return false;
+    }
     if (!res.ok) {
       const err = (await res.json().catch(() => null)) as { error?: string; details?: string } | null;
       setStatus(err?.error ?? 'Game blocks failed to save — try again.');
       return false;
     }
     const data = (await res.json()) as { settings?: SettingsState };
+    if (saveGen !== gameExclusionsSaveGen.current) {
+      return false;
+    }
     if (data.settings) {
       applySettingsFromApi(data.settings);
+      latestGameExclusionsRef.current = data.settings.gameExclusions ?? entries;
+    } else {
+      setStatus('Game blocks failed to save — try again.');
+      return false;
     }
     setStatus('Game blocks saved.');
     return true;
@@ -157,7 +171,8 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!initialLoadDone.current || !gameExclusionsDirty) return;
     const timer = window.setTimeout(() => {
-      void saveGameExclusions(settings.gameExclusions);
+      const saveGen = ++gameExclusionsSaveGen.current;
+      void saveGameExclusions(latestGameExclusionsRef.current, saveGen);
     }, 500);
     return () => window.clearTimeout(timer);
   }, [settings.gameExclusions, gameExclusionsDirty]);
@@ -339,6 +354,7 @@ export default function SettingsPage() {
               <GameExclusionEditor
                 value={settings.gameExclusions}
                 onChange={(gameExclusions) => {
+                  latestGameExclusionsRef.current = gameExclusions;
                   setGameExclusionsDirty(true);
                   setSettings((s) => ({ ...s, gameExclusions }));
                 }}

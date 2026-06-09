@@ -1,4 +1,4 @@
-/** Trust Wallet-style side panel — full-height docked UI on icon click. */
+/** TiltCheck toolbar panel — status, rules, and AutoVault controls. */
 
 import { getSessionCapConfig, type VaultRuleSnapshot } from './vault-sync.js';
 import { normalizeVaultPledgeConfig, isPledgeActive } from '@tiltcheck/shared';
@@ -61,14 +61,14 @@ async function sendAvCommand(type: string, extra: Record<string, unknown> = {}):
 }
 
 function lockoutLabel(style: LockoutStyle): string {
-  return style === 'hard_stop' ? 'hard stop' : 'friction first';
+  return style === 'hard_stop' ? 'Hard stop' : 'Friction first';
 }
 
 function renderPledgeLine(rules: VaultRuleSnapshot[]): string {
   const rule = rules.find((r) => r.ruleType === 'vault_pledge' && r.enabled);
-  if (!rule) return 'Vault pledge: none';
+  if (!rule) return 'No vault pledge';
   const config = normalizeVaultPledgeConfig(rule.config);
-  if (!isPledgeActive(config)) return 'Vault pledge: none';
+  if (!isPledgeActive(config)) return 'No vault pledge';
   const ms = Date.parse(config.releaseAt) - Date.now();
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
@@ -81,7 +81,7 @@ function renderPactLine(
   blocks: number,
   profile: keyof typeof RISK_LABEL,
 ): string {
-  if (!capArmed) return 'Line not armed — save on dashboard + Sync';
+  if (!capArmed) return 'Exit line not set — save My Line on dashboard, then Sync rules';
   const parts = [
     `${RISK_LABEL[profile]} sensitivity`,
     `${cap.durationMinutes}m · ${lockoutLabel(cap.lockoutStyle)}`,
@@ -104,7 +104,7 @@ function renderSuggestion(suggestion: ExclusionSuggestion | null): string {
       <p class="title">${escapeHtml(suggestion.label)}</p>
       <p class="copy">${escapeHtml(suggestion.reason)}</p>
       <div class="row">
-        <button type="button" class="btn btn-primary" data-add-warn="${escapeHtml(suggestion.label)}">Add as warn</button>
+        <button type="button" class="btn btn-primary" data-add-warn="${escapeHtml(suggestion.label)}">Add warning</button>
         <button type="button" class="btn btn-ghost" data-dismiss-suggest>Dismiss</button>
       </div>
     </div>`;
@@ -241,11 +241,12 @@ async function render(): Promise<void> {
     loggedIn && !demoMode && vaultRules.some((r) => r.ruleType === 'session_cap' && r.enabled);
 
   const av = await queryAvSnapshot();
-  const alert = live?.alertSummary ?? 'Open a casino tab — protection runs in the background.';
+  const alert = live?.alertSummary ?? 'Open a casino tab to see live status.';
   const isHeat =
     live &&
     (live.gameMatchStatus === 'warn' ||
       live.tiltStage >= 2 ||
+      alert.includes('Rapid clicks') ||
       alert.includes('heating up') ||
       alert.startsWith('Last call') ||
       alert.startsWith('Locked'));
@@ -257,7 +258,7 @@ async function render(): Promise<void> {
   app.innerHTML = `
     <header class="panel-header">
       <span class="logo">TiltCheck</span>
-      <span class="user">${loggedIn ? `@${escapeHtml(username ?? 'player')}` : 'Not connected'}${demoMode && loggedIn ? ' · demo' : ''}</span>
+      <span class="user">${loggedIn ? `@${escapeHtml(username ?? 'player')}` : 'Not connected'}${demoMode && loggedIn ? ' · Demo mode' : ''}</span>
     </header>
     <div class="panel-body">
       <nav class="quick-links" aria-label="Quick links">
@@ -282,7 +283,6 @@ async function render(): Promise<void> {
       ${loggedIn ? '' : `<p class="copy">Connect to sync game blocks, tilt sensitivity, and your exit line.</p>`}
     </div>
     <footer class="panel-footer">
-      Side panel — like Trust Wallet. Enforcement still fires on the casino tab.
       <a href="${escapeHtml(installHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(installLinkLabel)}</a>
     </footer>
   `;
@@ -298,7 +298,7 @@ async function render(): Promise<void> {
       if (!res?.ok) {
         setMsg('Sync failed.');
       } else if (loggedIn && res.settingsSynced === false) {
-        setMsg('Settings sync failed — re-connect or save on dashboard.');
+        setMsg('Couldn\'t load settings — reconnect or save on the dashboard.');
       } else {
         setMsg('Synced.');
       }
@@ -340,7 +340,7 @@ async function render(): Promise<void> {
     }
     setMsg('Adding…');
     const result = await pushSuggestedGameExclusion(token, label, 'warn');
-    setMsg(result.ok ? `Added ${label} (warn).` : result.error);
+    setMsg(result.ok ? `Added a warning for ${label}.` : result.error);
     if (result.ok) void render();
   });
 
@@ -357,6 +357,36 @@ async function render(): Promise<void> {
     void render();
   });
 }
+
+function registerSidePanelWindowSync(): void {
+  let windowId: number | undefined;
+  let lastWidth = 0;
+
+  void chrome.windows.getCurrent().then((win) => {
+    windowId = win.id;
+  });
+
+  const reportWidth = (width: number) => {
+    const rounded = Math.round(width);
+    if (rounded < 200 || Math.abs(rounded - lastWidth) < 6) return;
+    lastWidth = rounded;
+    chrome.runtime.sendMessage({ type: 'sidepanel-width', width: rounded, windowId });
+  };
+
+  const ro = new ResizeObserver((entries) => {
+    const w = entries[0]?.contentRect.width ?? 0;
+    if (w > 0) reportWidth(w);
+  });
+  ro.observe(document.documentElement);
+  reportWidth(document.documentElement.clientWidth);
+
+  window.addEventListener('pagehide', () => {
+    chrome.runtime.sendMessage({ type: 'sidepanel-closed', windowId });
+    ro.disconnect();
+  });
+}
+
+registerSidePanelWindowSync();
 
 void (async () => {
   const { stored } = await loadContext();

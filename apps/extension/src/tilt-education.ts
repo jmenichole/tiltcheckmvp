@@ -32,7 +32,7 @@ export function formatTiltEducation(indicator: TiltIndicator, profile: RiskProfi
       headline: 'Autopilot clicks — pace is climbing',
       metricLine: `${n} clicks in 5s · ${sens} sensitivity`,
       insightLine: 'Pace picked up — that\'s tilt speed, not bad luck.',
-      triggerCard: `Pattern: autopilot clicks · ${n} clicks in 5s`,
+      triggerCard: `Autopilot clicks · ${n} in 5 seconds`,
     };
   }
   if (indicator.type === 'chasing_losses') {
@@ -42,7 +42,7 @@ export function formatTiltEducation(indicator: TiltIndicator, profile: RiskProfi
       headline: 'Loss-chase — streak heating up',
       metricLine: `${n} losses tracked · ${sens} sensitivity`,
       insightLine: 'Chasing pattern — next bet often comes faster after red.',
-      triggerCard: `Pattern: loss-chase · ${n} losses tracked`,
+      triggerCard: `Loss-chase · ${n} losses in a row`,
     };
   }
   const safe = escapeHtml(indicator.description);
@@ -60,7 +60,7 @@ export function formatGameBlockEducation(label: string): {
   insightLine: string;
 } {
   return {
-    triggerCard: `Pattern: game block · ${label} on your no-play list`,
+    triggerCard: `${label} is on your no-play list`,
     insightLine: 'You listed this game — past you knew it wrecks you.',
   };
 }

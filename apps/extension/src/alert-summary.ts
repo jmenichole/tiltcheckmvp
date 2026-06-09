@@ -18,7 +18,7 @@ export function formatAlertSummary(input: AlertSummaryInput): string {
     return `${gameMatch.label} · ${gameMatch.countdownSec ?? '?'}s to lock`;
   }
   if (gameMatch.status === 'demo-banner') {
-    return `Demo · would block ${gameMatch.label ?? 'game'}`;
+    return `Demo mode — would block ${gameMatch.label ?? 'this game'}`;
   }
   if (gameMatch.status === 'blocked') {
     return `Locked · ${gameMatch.label ?? 'game'}`;
@@ -30,7 +30,7 @@ export function formatAlertSummary(input: AlertSummaryInput): string {
   }
   const ind = liveStats.latestIndicator;
   if (ind && (ind.severity === 'high' || ind.severity === 'critical')) {
-    return `${liveStats.clicksIn5s} clk · heating up`;
+    return `Rapid clicks — ${liveStats.clicksIn5s} in 5s`;
   }
   return 'All clear';
 }
@@ -53,6 +53,7 @@ export function publishLiveState(state: TcLiveState): void {
   const needsBadge =
     state.gameMatchStatus === 'warn' ||
     state.tiltStage >= 2 ||
+    state.alertSummary.includes('Rapid clicks') ||
     state.alertSummary.includes('heating up') ||
     state.alertSummary.startsWith('Last call');
   void chrome.runtime.sendMessage({

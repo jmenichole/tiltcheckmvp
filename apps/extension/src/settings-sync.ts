@@ -45,6 +45,34 @@ export async function fetchUserSettings(token: string): Promise<SyncedSettings |
   }
 }
 
+export async function pushSettingsToApi(
+  token: string,
+  patch: Partial<Pick<SyncedSettings, 'gameExclusions' | 'riskProfile' | 'demoMode'>>,
+): Promise<{ ok: true; settings: SyncedSettings } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/user/settings`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: err?.error ?? `Save failed (${res.status})` };
+    }
+    const data = (await res.json()) as { settings?: SyncedSettings };
+    const settings = normalizeSettings(data.settings);
+    if (!settings) return { ok: false, error: 'Invalid settings response' };
+    await applySettingsToStorage(settings);
+    return { ok: true, settings };
+  } catch {
+    return { ok: false, error: 'Network error' };
+  }
+}
+
 export async function pushSuggestedGameExclusion(
   token: string,
   label: string,

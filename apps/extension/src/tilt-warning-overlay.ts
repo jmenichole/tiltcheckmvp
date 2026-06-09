@@ -26,7 +26,7 @@ export function showTiltWarningOverlay(
   const urgencyLine = isUrgent
     ? demoMode
       ? 'Demo mode — no lockout yet. Still walk it off.'
-      : `Your ${sessionCapMinutes ?? '?'} min line is armed. Next spike locks the tab.`
+      : `Your ${sessionCapMinutes ?? '?'} min exit line is active. Another spike locks the tab.`
     : 'Slow down before past-you has to drag you out.';
 
   const root = document.createElement('div');

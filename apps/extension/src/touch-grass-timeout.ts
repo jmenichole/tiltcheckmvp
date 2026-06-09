@@ -14,10 +14,10 @@ export function triggerTouchGrassTimeout(reason: string, durationMs: number = DE
   root.style.cssText =
     'position:fixed;inset:0;z-index:2147483647;background:#0f1115;color:#ff4a4a;display:flex;flex-direction:column;align-items:center;justify-content:center;font:14px system-ui;text-align:center;padding:24px;';
   root.innerHTML = `
-    <p style="letter-spacing:.2em;font-weight:700;margin:0 0 8px">TILTCHECK ENFORCEMENT</p>
+    <p style="letter-spacing:.2em;font-weight:700;margin:0 0 8px">Touch Grass</p>
     <p style="color:#e6e6e6;max-width:28rem;margin:0 0 16px">${reason}</p>
     <p id="tiltcheck-lockdown-timer" style="font-size:2rem;margin:0">—</p>
-    <p style="color:#9ca3af;font-size:12px;margin-top:12px">This overlay clears automatically. Step away from the table.</p>
+    <p style="color:#9ca3af;font-size:12px;margin-top:12px">This screen clears automatically. Step away from the table.</p>
   `;
   document.documentElement.appendChild(root);
 

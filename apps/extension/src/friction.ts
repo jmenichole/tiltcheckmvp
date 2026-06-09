@@ -58,11 +58,11 @@ export function triggerFrictionScreen(opts: FrictionScreenOptions): void {
     ${pactNoteHtml(opts.futureMeNote)}
     ${pactLineHtml(opts.durationMinutes)}
     <p style="margin:0 0 1rem;letter-spacing:.2em;font:700 9px/1 ui-monospace,monospace;color:#6b7280;text-transform:uppercase">TiltCheck · Made for degens</p>
-    <h1 style="margin:0;font:800 clamp(1.5rem,6vw,2.25rem)/1.2 system-ui,-apple-system,sans-serif;color:#f3f4f6">Pause — your line is armed</h1>
+    <h1 style="margin:0;font:800 clamp(1.5rem,6vw,2.25rem)/1.2 system-ui,-apple-system,sans-serif;color:#f3f4f6">Pause — your exit line is active</h1>
     <p style="margin:.75rem 0 0;font-size:1rem;color:#d1d5db">Past you set a break before the tab locks.</p>
     ${triggerCardHtml(opts.triggerReason, opts.triggerInsight)}
     <p id="${FRICTION_TIMER_ID}" style="margin:1.5rem 0 0;font:700 clamp(2rem,8vw,3rem)/1 ui-monospace,monospace;font-variant-numeric:tabular-nums;color:#17c3b2">0:15</p>
-    <p style="margin:.75rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Bets unlock when the timer hits zero. Next critical spike → Touch Grass.</p>
+    <p style="margin:.75rem 0 0;max-width:22rem;font-size:13px;color:#9ca3af;line-height:1.5">Bets unlock when the timer hits zero. Another spike locks the tab.</p>
     ${snoozeBtn}
   `;
   document.documentElement.appendChild(root);

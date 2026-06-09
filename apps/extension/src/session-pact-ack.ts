@@ -88,7 +88,7 @@ export function maybeShowSessionPactAck(ctx: SessionPactAckContext): void {
           ${
             ctx.capArmed
               ? `${ctx.cap.durationMinutes} min lockout · ${lockoutLabel(ctx.cap.lockoutStyle)}${ctx.cap.snoozeEnabled ? ' · snooze on' : ''}`
-              : 'Not armed — save on dashboard + Sync'
+              : 'Exit line not set — save My Line on dashboard, then Sync rules'
           }
         </li>
         <li style="padding:.65rem 0;font-size:clamp(.95rem,2vw,1.05rem);color:#e5e7eb">
@@ -101,11 +101,11 @@ export function maybeShowSessionPactAck(ctx: SessionPactAckContext): void {
           ? `<p style="margin:1rem 0 0;max-width:28rem;padding:1rem 1.15rem;border-left:3px solid #17c3b2;border-radius:0 10px 10px 0;background:#12161e;font-size:clamp(.95rem,2vw,1.05rem);font-weight:600;color:#f3f4f6;text-align:left;line-height:1.45">“${escapeHtml(ctx.cap.futureMeNote.length > 140 ? `${ctx.cap.futureMeNote.slice(0, 140)}…` : ctx.cap.futureMeNote)}”</p>`
           : ''
       }
-      ${ctx.demoMode ? '<p style="margin:1rem 0 0;font-size:.9rem;color:#9ca3af">Demo mode — warnings only until demo is off.</p>' : ''}
+      ${ctx.demoMode ? '<p style="margin:1rem 0 0;font-size:.9rem;color:#9ca3af">Demo mode — warnings only. Turn off demo mode in Settings to enforce blocks.</p>' : ''}
     `
     : `
       <p style="margin:1.25rem 0 0;max-width:28rem;font-size:clamp(1rem,2.2vw,1.15rem);color:#b8c5d0;line-height:1.55">
-        Set <strong style="color:#e5e7eb">My Line</strong> on the dashboard and game blocks in Settings, then Sync from the TC toolbar icon.
+        Set <strong style="color:#e5e7eb">My Line</strong> on the dashboard and game blocks in Settings, then tap <strong style="color:#e5e7eb">Sync rules</strong> in the TiltCheck panel.
       </p>
     `;
 

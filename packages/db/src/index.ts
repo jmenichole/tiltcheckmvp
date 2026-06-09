@@ -76,10 +76,12 @@ function defaultUserSettings(userId: string): UserSettings {
   };
 }
 
+const memoryUserSettings = new Map<string, UserSettings>();
+
 export async function getUserSettings(userId: string): Promise<UserSettings> {
   const db = getSupabaseAdmin();
   if (!db) {
-    return defaultUserSettings(userId);
+    return memoryUserSettings.get(userId) ?? defaultUserSettings(userId);
   }
   const { data } = await db.from('user_settings').select('*').eq('user_id', userId).maybeSingle();
   if (!data) return defaultUserSettings(userId);
@@ -167,6 +169,7 @@ export async function upsertUserSettings(userId: string, patch: UserSettingsPatc
   };
 
   if (!db) {
+    memoryUserSettings.set(userId, merged);
     return merged;
   }
 

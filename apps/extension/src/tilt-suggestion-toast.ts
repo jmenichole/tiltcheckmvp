@@ -38,9 +38,9 @@ export function showTiltSuggestionToast(
     <button type="button" data-tc-suggest-dismiss aria-label="Dismiss" style="position:absolute;top:8px;right:8px;background:transparent;border:none;color:#9ca3af;cursor:pointer;font-size:18px;line-height:1;padding:4px">×</button>
     <p style="margin:0 0 6px;font:700 10px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:#5eead4">TC · BLOCK SUGGESTION</p>
     <p style="margin:0;font-size:14px;font-weight:700;color:#f3f4f6">Past-you might want ${escapeHtml(suggestion.label)} on the list</p>
-    <p style="margin:6px 0 10px;font-size:12px;color:#9ca3af;line-height:1.45">${escapeHtml(suggestion.reason)} — tilt engine picked up a pattern.</p>
+    <p style="margin:6px 0 10px;font-size:12px;color:#9ca3af;line-height:1.45">${escapeHtml(suggestion.reason)} — we noticed a pattern.</p>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      <button type="button" data-tc-suggest-add style="padding:6px 10px;border-radius:6px;border:none;background:#17c3b2;color:#0a0c10;font:inherit;font-size:11px;font-weight:700;cursor:pointer">Add as warn</button>
+      <button type="button" data-tc-suggest-add style="padding:6px 10px;border-radius:6px;border:none;background:#17c3b2;color:#0a0c10;font:inherit;font-size:11px;font-weight:700;cursor:pointer">Add warning</button>
       <a href="${settingsUrl}" target="_blank" rel="noopener" data-tc-suggest-settings style="padding:6px 10px;border-radius:6px;border:1px solid rgba(23,195,178,.35);background:transparent;color:#17c3b2;font:inherit;font-size:11px;font-weight:600;text-decoration:none;line-height:1.35">Settings</a>
     </div>
   `;

@@ -64,9 +64,9 @@ function lockoutLabel(style: LockoutStyle): string {
 
 function renderPledgeLine(rules: VaultRuleSnapshot[]): string {
   const rule = rules.find((r) => r.ruleType === 'vault_pledge' && r.enabled);
-  if (!rule) return 'Vault pledge: none';
+  if (!rule) return 'No vault pledge';
   const config = normalizeVaultPledgeConfig(rule.config);
-  if (!isPledgeActive(config)) return 'Vault pledge: none';
+  if (!isPledgeActive(config)) return 'No vault pledge';
   const ms = Date.parse(config.releaseAt) - Date.now();
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
@@ -79,7 +79,7 @@ function renderPactLine(
   blocks: number,
   profile: keyof typeof RISK_LABEL,
 ): string {
-  if (!capArmed) return 'Line not armed — save My Line on dashboard + Sync';
+  if (!capArmed) return 'Exit line not set — save My Line on dashboard, then Sync rules';
   const parts = [
     `${RISK_LABEL[profile]} sensitivity`,
     `${cap.durationMinutes}m · ${lockoutLabel(cap.lockoutStyle)}`,
@@ -106,7 +106,7 @@ function renderSuggestion(
       <p class="title">${escapeHtml(suggestion.label)}</p>
       <p class="copy">${escapeHtml(suggestion.reason)}</p>
       <div class="row">
-        <button type="button" class="btn btn-primary" data-add-warn="${escapeHtml(suggestion.label)}">Add as warn</button>
+        <button type="button" class="btn btn-primary" data-add-warn="${escapeHtml(suggestion.label)}">Add warning</button>
         <button type="button" class="btn btn-ghost" data-dismiss-suggest>Dismiss</button>
       </div>
     </div>`;
@@ -254,7 +254,7 @@ async function render(): Promise<void> {
       ${loggedIn ? `<button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>` : `<button type="button" class="btn btn-secondary" id="tc-connect">Connect</button>`}
     </div>
     ${loggedIn ? `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-line">My Line</button></div>` : `<div class="actions"><button type="button" class="btn btn-secondary" id="tc-settings">Settings</button></div>`}
-    <p class="footer">No floating widget — click the TC icon anytime. Enforcement still fires on-tab. <a href="${escapeHtml(installHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(installLinkLabel)}</a></p>
+    <p class="footer"><a href="${escapeHtml(installHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(installLinkLabel)}</a></p>
   `;
 
   const setMsg = (t: string) => {
@@ -268,7 +268,7 @@ async function render(): Promise<void> {
       if (!res?.ok) {
         setMsg('Sync failed.');
       } else if (loggedIn && res.settingsSynced === false) {
-        setMsg('Settings sync failed — re-connect or save on dashboard.');
+        setMsg('Couldn\'t load settings — reconnect or save on the dashboard.');
       } else {
         setMsg('Synced.');
       }
@@ -314,7 +314,7 @@ async function render(): Promise<void> {
     }
     setMsg('Adding…');
     const result = await pushSuggestedGameExclusion(token, label, 'warn');
-    setMsg(result.ok ? `Added ${label} (warn).` : result.error);
+    setMsg(result.ok ? `Added a warning for ${label}.` : result.error);
     if (result.ok) void render();
   });
 

@@ -1,7 +1,7 @@
 # Vault Pledge Timer — Casino Lock (No Chain) (Design Spec)
 
 **Date:** 2026-05-28  
-**Status:** Draft — pending user review  
+**Status:** Approved  
 **Decision:** Ship **Approach A** — casino vault + extension pledge timer (no Solana program in v1)  
 **Related:** [2026-05-27-past-you-pact-design.md](./2026-05-27-past-you-pact-design.md), [2026-05-27-extension-autovault-scope.md](./2026-05-27-extension-autovault-scope.md), [phases.md](../../phases.md)
 

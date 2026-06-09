@@ -1,4 +1,4 @@
-import type { GameExclusionEntry, LockoutStyle } from '@tiltcheck/shared';
+import type { ExclusionSuggestion, GameExclusionEntry, LockoutStyle } from '@tiltcheck/shared';
 import { webBaseUrl } from './config.js';
 import type { TiltIndicator } from './tilt-detector.js';
 import type { RiskProfile } from './tilt-detector.js';
@@ -40,6 +40,7 @@ export type PanelState = {
   gameMatch: GameMatchInfo;
   liveStats: LiveStats;
   tiltWarning: TiltWarningState;
+  tiltSuggestion: ExclusionSuggestion | null;
   saveStatus: string;
   expanded: boolean;
   alwaysOn: boolean;
@@ -150,6 +151,7 @@ export async function loadInitialPanelState(): Promise<Partial<PanelState>> {
     gameMatch: { status: 'clear' },
     liveStats: { clicksIn5s: 0, latestIndicator: null },
     tiltWarning: { stage: 0, activeIndicator: null },
+    tiltSuggestion: null,
     saveStatus: '',
     autoVaultSite: null,
   };
@@ -452,6 +454,14 @@ export class TiltCheckSidebar {
         <div style="color:#9ca3af">${armed} · ${this.state.gameExclusions.length} blocks</div>
         <div style="margin-top:4px">${this.alertLine()}</div>
       </div>
+      ${
+        this.state.tiltSuggestion
+          ? `<div data-tc-no-drag style="font-size:10px;line-height:1.45;padding:6px 8px;background:#1a1510;border-radius:6px;border:1px solid rgba(251,191,36,.35);margin-bottom:4px">
+        <div style="color:#fbbf24;font-weight:600;margin-bottom:2px">Suggest · ${this.state.tiltSuggestion.label}</div>
+        <div style="color:#9ca3af">${this.state.tiltSuggestion.reason}</div>
+      </div>`
+          : ''
+      }
       <div data-tc-no-drag style="font-size:10px;color:#6b7280;line-height:1.45;padding:6px 8px;background:#12161e;border-radius:6px;border:1px solid rgba(30,37,51,.8)">
         <div><span style="color:#5eead4">Tilt</span> — pulse check → last call → Touch Grass</div>
         <div><span style="color:#5eead4">Blocks</span> — edit on Web → Sync here</div>

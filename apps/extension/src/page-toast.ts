@@ -48,11 +48,22 @@ export type PageToastOptions = {
   tag: string;
   headline: string;
   sub?: string;
+  dismissible?: boolean;
+  autoDismissMs?: number;
 };
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 export function showPageToast(elementId: string, opts: PageToastOptions): void {
   dismissPageToast(elementId);
   const t = TONE[opts.tone];
+  const interactive = Boolean(opts.dismissible || opts.autoDismissMs);
   const root = document.createElement('div');
   root.id = elementId;
   root.setAttribute('role', 'status');
@@ -71,15 +82,31 @@ export function showPageToast(elementId: string, opts: PageToastOptions): void {
     `color:${t.text}`,
     'font:13px/1.45 system-ui,-apple-system,sans-serif',
     'box-shadow:0 12px 36px rgba(0,0,0,.6)',
-    'pointer-events:none',
+    interactive ? 'pointer-events:auto' : 'pointer-events:none',
   ].join(';');
 
+  const closeBtn = opts.dismissible
+    ? `<button type="button" data-tc-toast-dismiss aria-label="Dismiss" style="position:absolute;top:8px;right:8px;background:transparent;border:none;color:${t.sub};cursor:pointer;font-size:18px;line-height:1;padding:4px">×</button>`
+    : '';
+
+  root.style.position = 'fixed';
+  if (opts.dismissible) root.style.paddingRight = '36px';
+
   root.innerHTML = `
-    <p style="margin:0 0 6px;font:700 10px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:${t.accent}">${opts.tag}</p>
-    <p style="margin:0;font-size:14px;font-weight:700;color:${t.text}">${opts.headline}</p>
-    ${opts.sub ? `<p style="margin:6px 0 0;font-size:12px;color:${t.sub};line-height:1.45">${opts.sub}</p>` : ''}
+    ${closeBtn}
+    <p style="margin:0 0 6px;font:700 10px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:${t.accent}">${escapeHtml(opts.tag)}</p>
+    <p style="margin:0;font-size:14px;font-weight:700;color:${t.text}">${escapeHtml(opts.headline)}</p>
+    ${opts.sub ? `<p style="margin:6px 0 0;font-size:12px;color:${t.sub};line-height:1.45;white-space:pre-line">${escapeHtml(opts.sub)}</p>` : ''}
   `;
   document.documentElement.appendChild(root);
+
+  const dismiss = () => dismissPageToast(elementId);
+
+  root.querySelector('[data-tc-toast-dismiss]')?.addEventListener('click', dismiss);
+
+  if (opts.autoDismissMs && opts.autoDismissMs > 0) {
+    window.setTimeout(dismiss, opts.autoDismissMs);
+  }
 }
 
 export function dismissPageToast(elementId: string): void {

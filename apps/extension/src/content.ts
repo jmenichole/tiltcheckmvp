@@ -22,6 +22,11 @@ import {
 import { formatGameBlockEducation, formatTiltEducation } from './tilt-education.js';
 import { dismissPageToast, showPageToast } from './page-toast.js';
 import type { TouchGrassOptions } from './enforcement.js';
+import { maybeShowSessionPactBanner } from './session-pact-banner.js';
+import { observeTiltPatterns } from './tilt-pattern-learn.js';
+import { dismissTiltSuggestionToast, showTiltSuggestionToast } from './tilt-suggestion-toast.js';
+import { pushSuggestedGameExclusion } from './settings-sync.js';
+import type { ExclusionSuggestion } from '@tiltcheck/shared';
 
 const GAME_WARN_TOAST_ID = 'tiltcheck-game-warn-root';
 
@@ -51,6 +56,8 @@ if (!excluded) {
   let userManuallyExpandedPanel = false;
   let panelAutoExpandedByWarn = false;
   let saveStatus = '';
+  let lastShownSuggestionLabel: string | null = null;
+  let activeTiltSuggestion: ExclusionSuggestion | null = null;
 
   const detector = new TiltDetector(riskProfile);
   const warningEscalation = new TiltWarningEscalation();
@@ -155,6 +162,7 @@ if (!excluded) {
       gameMatch: base.gameMatch ?? { status: 'clear' },
       liveStats: base.liveStats ?? { clicksIn5s: 0, latestIndicator: null },
       tiltWarning: warningEscalation.getState(),
+      tiltSuggestion: activeTiltSuggestion,
       saveStatus,
       expanded: panelExpanded,
       alwaysOn: panelAlwaysOn,
@@ -287,6 +295,25 @@ if (!excluded) {
     if (!popup) window.open(url, '_blank');
   }
 
+  let sessionBannerTimer: number | null = null;
+
+  function scheduleSessionPactBanner(stored: Record<string, unknown>) {
+    if (sessionBannerTimer !== null) window.clearTimeout(sessionBannerTimer);
+    sessionBannerTimer = window.setTimeout(() => {
+      sessionBannerTimer = null;
+      const cap = getSessionCapConfig(vaultRules);
+      maybeShowSessionPactBanner({
+        loggedIn,
+        demoMode,
+        username: stored.tc_username as string | undefined,
+        riskProfile,
+        cap,
+        capArmed: enforcementEnabled,
+        gameExclusions,
+      });
+    }, 900);
+  }
+
   function applyStoredState(stored: Record<string, unknown>) {
     vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
     gameExclusions = (stored.tc_game_exclusions as GameExclusionEntry[]) ?? [];
@@ -299,16 +326,19 @@ if (!excluded) {
 
     gameWatcher.setExclusions(gameExclusions);
 
-    const cap = vaultRules.find((r) => r.ruleType === 'session_cap' && r.enabled);
+    const cap = getSessionCapConfig(vaultRules);
     sidebar?.update({
       loggedIn,
       demoMode,
       username: stored.tc_username as string | undefined,
       riskProfile,
       sessionCapArmed: enforcementEnabled,
-      sessionCapMinutes: cap?.config?.durationMinutes ?? 5,
+      sessionCapMinutes: cap.durationMinutes,
+      sessionCapLockoutStyle: cap.lockoutStyle,
       gameExclusions,
     });
+
+    scheduleSessionPactBanner(stored);
   }
 
   void initSidebar();
@@ -356,8 +386,50 @@ if (!excluded) {
 
   gameWatcher.start();
 
+  async function maybeSuggestGameBlock(indicators: ReturnType<TiltDetector['analyze']>) {
+    if (!loggedIn) return;
+    const suggestion = await observeTiltPatterns(indicators, gameExclusions);
+    if (!suggestion) {
+      if (activeTiltSuggestion) {
+        activeTiltSuggestion = null;
+        sidebar?.update({ tiltSuggestion: null });
+      }
+      return;
+    }
+    activeTiltSuggestion = suggestion;
+    sidebar?.update({ tiltSuggestion: suggestion });
+    if (suggestion.label === lastShownSuggestionLabel) return;
+    lastShownSuggestionLabel = suggestion.label;
+    showTiltSuggestionToast(suggestion, {
+      onAddAsWarn: async (label) => {
+        const token = await getToken();
+        if (!token) {
+          saveStatus = 'Connect first.';
+          sidebar?.update({ saveStatus });
+          return;
+        }
+        saveStatus = 'Adding block…';
+        sidebar?.update({ saveStatus });
+        const result = await pushSuggestedGameExclusion(token, label, 'warn');
+        if (!result.ok) {
+          saveStatus = result.error;
+          sidebar?.update({ saveStatus });
+          return;
+        }
+        gameExclusions = result.gameExclusions;
+        gameWatcher.setExclusions(gameExclusions);
+        activeTiltSuggestion = null;
+        lastShownSuggestionLabel = null;
+        dismissTiltSuggestionToast();
+        saveStatus = `Added ${label} (warn).`;
+        sidebar?.update({ gameExclusions, tiltSuggestion: null, saveStatus });
+      },
+    });
+  }
+
   function handleTiltIndicators(indicators: ReturnType<TiltDetector['analyze']>) {
     updateLiveStats(indicators);
+    void maybeSuggestGameBlock(indicators);
 
     if (!enforcementEnabled) {
       warningEscalation.reset();

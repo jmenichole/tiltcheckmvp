@@ -251,7 +251,13 @@ async function render(): Promise<void> {
   document.getElementById('tc-sync')?.addEventListener('click', () => {
     setMsg('Syncing…');
     chrome.runtime.sendMessage({ type: 'sync-vault' }, (res) => {
-      setMsg(res?.ok ? 'Synced.' : 'Sync failed.');
+      if (!res?.ok) {
+        setMsg('Sync failed.');
+      } else if (loggedIn && res.settingsSynced === false) {
+        setMsg('Settings sync failed — re-connect or save on dashboard.');
+      } else {
+        setMsg('Synced.');
+      }
       void render();
     });
   });
@@ -316,7 +322,17 @@ async function render(): Promise<void> {
   });
 }
 
-void render();
+void (async () => {
+  const { stored } = await loadContext();
+  if (stored.tc_session_token) {
+    chrome.runtime.sendMessage({ type: 'sync-vault' }, () => {
+      void render();
+    });
+    return;
+  }
+  await render();
+})();
+
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' || area === 'session') {
     if (changes.tc_live || changes.tc_vault_rules || changes.tc_game_exclusions || changes.tc_session_token) {

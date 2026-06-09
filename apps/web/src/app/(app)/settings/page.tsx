@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
 import GameExclusionEditor from '@/components/GameExclusionEditor';
 import { apiFetch } from '@/lib/api';
@@ -55,6 +55,8 @@ export default function SettingsPage() {
   });
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [gameExclusionsDirty, setGameExclusionsDirty] = useState(false);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     Promise.all([apiFetch('/auth/me'), apiFetch('/user/settings')])
@@ -79,8 +81,48 @@ export default function SettingsPage() {
         }
       })
       .catch(() => router.replace('/login?redirect=/settings'))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        setLoading(false);
+        initialLoadDone.current = true;
+      });
   }, [router]);
+
+  function applySettingsFromApi(s: Partial<SettingsState>) {
+    setSettings({
+      riskProfile: s.riskProfile ?? 'moderate',
+      notificationsEnabled: s.notificationsEnabled ?? true,
+      demoMode: s.demoMode ?? false,
+      gameExclusions: Array.isArray(s.gameExclusions) ? s.gameExclusions : [],
+    });
+    setGameExclusionsDirty(false);
+  }
+
+  async function saveGameExclusions(entries: GameExclusionEntry[]) {
+    setStatus('Saving game blocks...');
+    const res = await apiFetch('/user/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({ gameExclusions: entries }),
+    });
+    if (!res.ok) {
+      const err = (await res.json().catch(() => null)) as { error?: string; details?: string } | null;
+      setStatus(err?.error ?? 'Game blocks failed to save — try again.');
+      return false;
+    }
+    const data = (await res.json()) as { settings?: SettingsState };
+    if (data.settings) {
+      applySettingsFromApi(data.settings);
+    }
+    setStatus('Game blocks saved.');
+    return true;
+  }
+
+  useEffect(() => {
+    if (!initialLoadDone.current || !gameExclusionsDirty) return;
+    const timer = window.setTimeout(() => {
+      void saveGameExclusions(settings.gameExclusions);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [settings.gameExclusions, gameExclusionsDirty]);
 
   async function saveSettings() {
     setStatus('Saving...');
@@ -89,18 +131,13 @@ export default function SettingsPage() {
       body: JSON.stringify(settings),
     });
     if (!res.ok) {
-      setStatus('Save failed — try again.');
+      const err = (await res.json().catch(() => null)) as { error?: string; details?: string } | null;
+      setStatus(err?.error ?? 'Save failed — try again.');
       return;
     }
     const data = (await res.json()) as { settings?: SettingsState };
     if (data.settings) {
-      const s = data.settings;
-      setSettings({
-        riskProfile: s.riskProfile ?? 'moderate',
-        notificationsEnabled: s.notificationsEnabled ?? true,
-        demoMode: s.demoMode ?? false,
-        gameExclusions: Array.isArray(s.gameExclusions) ? s.gameExclusions : [],
-      });
+      applySettingsFromApi(data.settings);
     }
     setStatus('Settings saved.');
   }
@@ -198,7 +235,10 @@ export default function SettingsPage() {
               <h3 className="public-page-card__title settings-section-title">Game self-exclusion</h3>
               <GameExclusionEditor
                 value={settings.gameExclusions}
-                onChange={(gameExclusions) => setSettings((s) => ({ ...s, gameExclusions }))}
+                onChange={(gameExclusions) => {
+                  setGameExclusionsDirty(true);
+                  setSettings((s) => ({ ...s, gameExclusions }));
+                }}
               />
             </section>
 

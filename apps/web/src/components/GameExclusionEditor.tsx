@@ -160,8 +160,8 @@ export default function GameExclusionEditor({ value, onChange }: GameExclusionEd
   return (
     <div className="game-exclusion-editor">
       <p className="public-page-card__copy">
-        Toggle presets or add custom games. The extension matches URL, page title, and headings against
-        your patterns — block immediately or warn first.
+        Toggle presets or add custom games — changes save automatically. The extension matches URL, page
+        title, and headings against your patterns — block immediately or warn first.
       </p>
 
       <div className="game-exclusion-presets" role="group" aria-label="Preset games">

@@ -101,25 +101,46 @@ function mapUserSettingsRow(data: Record<string, unknown>): UserSettings {
 }
 
 function parseGameExclusions(raw: unknown): GameExclusionEntry[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((entry): entry is GameExclusionEntry => {
-      return (
-        entry &&
-        typeof entry === 'object' &&
-        typeof (entry as GameExclusionEntry).id === 'string' &&
-        typeof (entry as GameExclusionEntry).label === 'string' &&
-        Array.isArray((entry as GameExclusionEntry).matchPatterns)
-      );
-    })
-    .map((entry) => ({
-      ...entry,
+  let parsed: unknown = raw;
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  const entries: GameExclusionEntry[] = [];
+  for (const rawEntry of parsed) {
+    if (!rawEntry || typeof rawEntry !== 'object') continue;
+    const entry = rawEntry as Record<string, unknown>;
+    const label = typeof entry.label === 'string' ? entry.label.trim() : '';
+    const matchPatterns = Array.isArray(entry.matchPatterns)
+      ? entry.matchPatterns
+          .filter((pattern): pattern is string => typeof pattern === 'string')
+          .map((pattern) => pattern.trim().toLowerCase())
+          .filter((pattern) => pattern.length >= 2)
+      : [];
+    if (!label || matchPatterns.length === 0) continue;
+
+    const id =
+      typeof entry.id === 'string' && entry.id.length > 0
+        ? entry.id
+        : `ex-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+
+    entries.push({
+      id,
+      label,
+      matchPatterns,
       mode: entry.mode === 'warn' ? 'warn' : 'block',
       source:
         entry.source === 'preset' || entry.source === 'url' || entry.source === 'keywords'
           ? entry.source
           : 'keywords',
-    }));
+    });
+  }
+  return entries;
 }
 
 export type UserSettingsPatch = Partial<

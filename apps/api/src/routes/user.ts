@@ -47,12 +47,29 @@ userRoutes.patch('/settings', async (c) => {
     return c.json({ error: 'Invalid riskProfile' }, 400);
   }
 
-  const settings = await upsertUserSettings(user.id, {
-    riskProfile: body.riskProfile,
-    notificationsEnabled: body.notificationsEnabled,
-    demoMode: body.demoMode,
-    gameExclusions,
-    onboardingCompletedAt,
-  });
-  return c.json({ settings });
+  try {
+    const settings = await upsertUserSettings(user.id, {
+      riskProfile: body.riskProfile,
+      notificationsEnabled: body.notificationsEnabled,
+      demoMode: body.demoMode,
+      gameExclusions,
+      onboardingCompletedAt,
+    });
+    return c.json({ settings });
+  } catch (err) {
+    const details = err instanceof Error ? err.message : 'Unknown error';
+    const missingColumn =
+      details.includes('game_exclusions') ||
+      details.includes('onboarding_completed_at') ||
+      details.includes('column');
+    return c.json(
+      {
+        error: missingColumn
+          ? 'Database schema out of date — apply supabase/migrations/20260528120000_game_exclusions.sql'
+          : 'Failed to save settings',
+        details,
+      },
+      500,
+    );
+  }
 });

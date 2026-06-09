@@ -50,6 +50,10 @@ export default function DashboardProtectionAside({
                   {gameExclusions.length} game{gameExclusions.length === 1 ? '' : 's'}
                   {blockCount > 0 ? ` · ${blockCount} block` : ''}
                   {warnCount > 0 ? ` · ${warnCount} warn` : ''}
+                  <span className="dashboard-status-list__muted">
+                    {' '}
+                    — {gameExclusions.map((e) => e.label).join(', ')}
+                  </span>
                 </>
               )}
             </dd>

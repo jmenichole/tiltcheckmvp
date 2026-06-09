@@ -41,24 +41,25 @@ export default function DashboardPage() {
     setFutureMeNote(cap.futureMeNote);
   }
 
+  async function refreshSettings() {
+    const r = await apiFetch('/user/settings');
+    if (!r.ok) return;
+    const data = await r.json();
+    const s = data.settings;
+    if (s) {
+      setGameExclusions(s.gameExclusions ?? []);
+      setRiskProfile(s.riskProfile ?? 'moderate');
+      setOnboardingComplete(Boolean(s.onboardingCompletedAt));
+      setShowWizard(!s.onboardingCompletedAt);
+    }
+  }
+
   useEffect(() => {
     apiFetch('/auth/me')
       .then((r) => r.json())
       .then((data) => setUser(data.user));
     refreshVault();
-    apiFetch('/user/settings')
-      .then(async (r) => {
-        if (!r.ok) return;
-        const data = await r.json();
-        const s = data.settings;
-        if (s) {
-          setGameExclusions(s.gameExclusions ?? []);
-          setRiskProfile(s.riskProfile ?? 'moderate');
-          setOnboardingComplete(Boolean(s.onboardingCompletedAt));
-          setShowWizard(!s.onboardingCompletedAt);
-        }
-      })
-      .finally(() => setSettingsLoaded(true));
+    refreshSettings().finally(() => setSettingsLoaded(true));
   }, []);
 
   async function refreshVault() {
@@ -132,7 +133,8 @@ export default function DashboardPage() {
               onComplete={() => {
                 setShowWizard(false);
                 setOnboardingComplete(true);
-                refreshVault();
+                void refreshVault();
+                void refreshSettings();
               }}
               onSkip={() => setShowWizard(false)}
             />

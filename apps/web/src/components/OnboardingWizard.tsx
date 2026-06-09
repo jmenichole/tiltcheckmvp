@@ -83,9 +83,11 @@ export function OnboardingWizard({
   async function finishWizard() {
     setSaving(true);
     setError('');
-    const gameExclusions = GAME_EXCLUSION_PRESETS.map((p) =>
+    const presetExclusions = GAME_EXCLUSION_PRESETS.map((p) =>
       presetEntry(p, enabledPresets.has(p.label), presetMode),
     ).filter((e): e is GameExclusionEntry => e !== null);
+    const customExclusions = initialGameExclusions.filter((e) => e.source !== 'preset');
+    const gameExclusions = [...presetExclusions, ...customExclusions];
 
     const settingsRes = await apiFetch('/user/settings', {
       method: 'PATCH',

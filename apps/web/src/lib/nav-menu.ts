@@ -25,7 +25,8 @@ export const NAV_MENU_GROUPS: NavMenuGroup[] = [
     title: 'Company',
     links: [
       { href: '/', label: 'How it Works' },
-      { href: '/legal', label: 'Operators & Docs' },
+      { href: '/terms', label: 'Terms' },
+      { href: '/privacy', label: 'Privacy' },
       { href: 'https://discord.gg/gdBsEJfCar', label: 'Contact', external: true },
       { href: '/touch-grass', label: 'Touch Grass Protocol' },
     ],

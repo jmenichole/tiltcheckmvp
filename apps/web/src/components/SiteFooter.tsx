@@ -14,7 +14,6 @@ export default function SiteFooter() {
             <Link href="/touch-grass">Touch Grass</Link>
             <Link href="/terms">Terms</Link>
             <Link href="/privacy">Privacy</Link>
-            <Link href="/legal">Operators</Link>
             <a href="https://github.com/jmenichole/tiltcheckmvp" target="_blank" rel="noopener noreferrer">
               Source
             </a>

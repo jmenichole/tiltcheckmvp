@@ -29,6 +29,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({
         ok: true,
         count: rules.length,
+        settingsSynced: Boolean(settings),
         settings: settings
           ? {
               riskProfile: settings.riskProfile,

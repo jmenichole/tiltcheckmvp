@@ -17,7 +17,7 @@ export interface UserSettings {
 }
 
 export type GameExclusionMode = 'block' | 'warn';
-export type GameExclusionSource = 'preset' | 'keywords' | 'url';
+export type GameExclusionSource = 'preset' | 'keywords' | 'url' | 'stake_category';
 
 export interface GameExclusionEntry {
   id: string;

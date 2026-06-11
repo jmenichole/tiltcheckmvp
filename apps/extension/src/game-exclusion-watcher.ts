@@ -1,4 +1,4 @@
-import { matchGameExclusion, normalizeHaystack } from '@tiltcheck/shared';
+import { matchGameExclusionForPage, normalizeHaystack } from '@tiltcheck/shared';
 import type { GameExclusionEntry } from '@tiltcheck/shared';
 import type { TouchGrassOptions } from './enforcement.js';
 
@@ -124,7 +124,14 @@ export class GameExclusionWatcher {
     if (this.blocked) return;
 
     const haystack = buildGameHaystack();
-    const match = matchGameExclusion(haystack, this.exclusions);
+    const isStake =
+      location.hostname === 'stake.us' || location.hostname === 'www.stake.us';
+    const match = matchGameExclusionForPage(
+      location.pathname,
+      haystack,
+      this.exclusions,
+      { stakeHost: isStake },
+    );
 
     if (!match) {
       this.resetWarn();

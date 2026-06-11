@@ -14,26 +14,53 @@ export const GAME_EXCLUSION_PRESETS: Omit<GameExclusionEntry, 'id' | 'mode'>[] =
 export const MAX_GAME_EXCLUSIONS = 20;
 const MIN_PATTERN_LEN = 2;
 const MAX_PATTERN_LEN = 120;
-const MAX_PATTERNS_PER_ENTRY = 10;
+/** Stake category bundles need group + game path prefixes (see stake-categories.ts). */
+const MAX_PATTERNS_PER_ENTRY = 16;
 
 export function normalizeHaystack(parts: string[]): string {
   return parts.join(' ').toLowerCase();
+}
+
+export function pathnameMatchesPrefix(pathname: string, prefix: string): boolean {
+  const p = prefix.toLowerCase();
+  const path = pathname.toLowerCase();
+  return path === p || path.startsWith(p + '/');
+}
+
+export function matchGameExclusionForPage(
+  pathname: string,
+  haystack: string,
+  entries: GameExclusionEntry[],
+  options?: { stakeHost?: boolean },
+): GameExclusionEntry | null {
+  const normalizedHaystack = haystack.toLowerCase();
+  const usePathPrefix = options?.stakeHost === true;
+
+  for (const entry of entries) {
+    for (const pattern of entry.matchPatterns) {
+      const p = pattern.toLowerCase().trim();
+      if (p.length < MIN_PATTERN_LEN) continue;
+
+      if (p.startsWith('/')) {
+        if (usePathPrefix && pathnameMatchesPrefix(pathname, p)) {
+          return entry;
+        }
+        if (!usePathPrefix && normalizedHaystack.includes(p)) {
+          return entry;
+        }
+      } else if (normalizedHaystack.includes(p)) {
+        return entry;
+      }
+    }
+  }
+  return null;
 }
 
 export function matchGameExclusion(
   haystack: string,
   entries: GameExclusionEntry[],
 ): GameExclusionEntry | null {
-  const normalized = haystack.toLowerCase();
-  for (const entry of entries) {
-    for (const pattern of entry.matchPatterns) {
-      const p = pattern.toLowerCase().trim();
-      if (p.length >= MIN_PATTERN_LEN && normalized.includes(p)) {
-        return entry;
-      }
-    }
-  }
-  return null;
+  return matchGameExclusionForPage('', haystack, entries);
 }
 
 export function patternsFromGameUrl(rawUrl: string): string[] {
@@ -129,7 +156,7 @@ export function validateGameExclusions(
     }
 
     const id = typeof entry.id === 'string' && entry.id.length > 0 ? entry.id : crypto.randomUUID();
-    const source = (['preset', 'keywords', 'url'] as GameExclusionSource[]).includes(
+    const source = (['preset', 'keywords', 'url', 'stake_category'] as GameExclusionSource[]).includes(
       entry.source as GameExclusionSource,
     )
       ? (entry.source as GameExclusionSource)

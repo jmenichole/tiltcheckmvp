@@ -3,17 +3,22 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import {
-  GAME_EXCLUSION_PRESETS,
+  STAKE_CATEGORY_BLOCKS,
+  buildStakeCategoryExclusions,
   type GameExclusionEntry,
   type GameExclusionMode,
   type LockoutStyle,
+  type StakeCategoryId,
 } from '@tiltcheck/shared';
 import { apiFetch } from '@/lib/api';
 import { extensionInstallHref } from '@/lib/extension-install';
+import { StakeCategoryPicker } from '@/components/StakeCategoryPicker';
 
 type RiskProfile = 'conservative' | 'moderate' | 'degen';
 
 type TrapPattern = 'game_trap' | 'autopilot' | 'chase' | 'heater' | 'skip';
+
+const ALL_STAKE_CATEGORY_IDS: StakeCategoryId[] = STAKE_CATEGORY_BLOCKS.map((c) => c.id);
 
 const SENSITIVITY_CARDS: Array<{
   id: RiskProfile;
@@ -81,58 +86,57 @@ type Props = {
   onSkip: () => void;
 };
 
-function presetEntry(
-  preset: (typeof GAME_EXCLUSION_PRESETS)[number],
-  enabled: boolean,
-  mode: GameExclusionMode,
-): GameExclusionEntry | null {
-  if (!enabled) return null;
-  return {
-    id: `preset-${preset.label.toLowerCase().replace(/\s+/g, '-')}`,
-    label: preset.label,
-    matchPatterns: [...preset.matchPatterns],
-    mode,
-    source: 'preset',
-  };
+function stakeCategoryIdFromEntry(entry: GameExclusionEntry): StakeCategoryId | null {
+  if (entry.source !== 'stake_category') return null;
+  const id = entry.id.replace(/^stake-cat-/, '') as StakeCategoryId;
+  return ALL_STAKE_CATEGORY_IDS.includes(id) ? id : null;
 }
 
 function applyTrapDefaults(
   trap: TrapPattern,
 ): Partial<{
   riskProfile: RiskProfile;
-  presetMode: GameExclusionMode;
+  categoryDefaultMode: GameExclusionMode;
   sessionCapMinutes: number;
-  enabledPresets: Set<string>;
+  selectedCategories: Set<StakeCategoryId>;
   lockoutStyle: LockoutStyle;
 }> {
   switch (trap) {
     case 'game_trap':
       return {
-        presetMode: 'block',
+        categoryDefaultMode: 'block',
         riskProfile: 'moderate',
         sessionCapMinutes: 15,
-        enabledPresets: new Set(['Crash / Limbo', 'Slots', 'Blackjack']),
+        selectedCategories: new Set<StakeCategoryId>(['stake-originals', 'scratch-cards']),
       };
     case 'autopilot':
       return {
-        presetMode: 'warn',
+        categoryDefaultMode: 'warn',
         riskProfile: 'conservative',
         sessionCapMinutes: 15,
+        selectedCategories: new Set<StakeCategoryId>(['stake-originals', 'slots']),
         lockoutStyle: 'friction_first',
       };
     case 'chase':
       return {
-        presetMode: 'block',
+        categoryDefaultMode: 'block',
         riskProfile: 'conservative',
         sessionCapMinutes: 20,
+        selectedCategories: new Set(ALL_STAKE_CATEGORY_IDS),
         lockoutStyle: 'hard_stop',
       };
     case 'heater':
       return {
-        presetMode: 'warn',
+        categoryDefaultMode: 'warn',
         riskProfile: 'moderate',
         sessionCapMinutes: 10,
+        selectedCategories: new Set<StakeCategoryId>(['stake-originals', 'slots']),
         lockoutStyle: 'friction_first',
+      };
+    case 'skip':
+      return {
+        categoryDefaultMode: 'block',
+        selectedCategories: new Set(),
       };
     default:
       return {};
@@ -152,36 +156,48 @@ export function OnboardingWizard({
   const [sessionCapMinutes, setSessionCapMinutes] = useState(initialSessionCapMinutes);
   const [lockoutStyle, setLockoutStyle] = useState<LockoutStyle>('friction_first');
   const [futureMeNote, setFutureMeNote] = useState('');
-  const [enabledPresets, setEnabledPresets] = useState<Set<string>>(() => {
-    const labels = new Set(initialGameExclusions.map((e) => e.label));
-    return new Set(GAME_EXCLUSION_PRESETS.filter((p) => labels.has(p.label)).map((p) => p.label));
+  const [selectedCategories, setSelectedCategories] = useState<Set<StakeCategoryId>>(() => {
+    const ids = initialGameExclusions
+      .map(stakeCategoryIdFromEntry)
+      .filter((id): id is StakeCategoryId => id !== null);
+    return new Set(ids);
   });
-  const [presetMode, setPresetMode] = useState<GameExclusionMode>('block');
+  const [categoryDefaultMode, setCategoryDefaultMode] = useState<GameExclusionMode>('block');
+  const [categoryOverrides, setCategoryOverrides] = useState<
+    Partial<Record<StakeCategoryId, GameExclusionMode>>
+  >({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const steps = ['Welcome', 'Your pattern', 'Games', 'Sensitivity', 'Session cap', 'Done'] as const;
+  const steps = ['Welcome', 'Your pattern', 'Stake traps', 'Sensitivity', 'Session cap', 'Done'] as const;
   const installHref = extensionInstallHref();
 
   function continueFromTrap(nextTrap: TrapPattern) {
     setTrapPattern(nextTrap);
     const defaults = applyTrapDefaults(nextTrap);
     if (defaults.riskProfile) setRiskProfile(defaults.riskProfile);
-    if (defaults.presetMode) setPresetMode(defaults.presetMode);
+    if (defaults.categoryDefaultMode) setCategoryDefaultMode(defaults.categoryDefaultMode);
     if (defaults.sessionCapMinutes) setSessionCapMinutes(defaults.sessionCapMinutes);
     if (defaults.lockoutStyle) setLockoutStyle(defaults.lockoutStyle);
-    if (defaults.enabledPresets) setEnabledPresets(defaults.enabledPresets);
+    if (defaults.selectedCategories) {
+      setSelectedCategories(defaults.selectedCategories);
+      setCategoryOverrides({});
+    }
     setStep(2);
   }
 
   async function finishWizard() {
     setSaving(true);
     setError('');
-    const presetExclusions = GAME_EXCLUSION_PRESETS.map((p) =>
-      presetEntry(p, enabledPresets.has(p.label), presetMode),
-    ).filter((e): e is GameExclusionEntry => e !== null);
-    const customExclusions = initialGameExclusions.filter((e) => e.source !== 'preset');
-    const gameExclusions = [...presetExclusions, ...customExclusions];
+    const categoryExclusions = buildStakeCategoryExclusions(
+      Array.from(selectedCategories),
+      categoryDefaultMode,
+      categoryOverrides,
+    );
+    const customExclusions = initialGameExclusions.filter(
+      (e) => e.source === 'keywords' || e.source === 'url',
+    );
+    const gameExclusions = [...categoryExclusions, ...customExclusions];
 
     const settingsRes = await apiFetch('/user/settings', {
       method: 'PATCH',
@@ -257,8 +273,8 @@ export function OnboardingWizard({
             What usually cooks you?
           </h2>
           <p className="public-page-card__copy">
-            Pick the closest match — we will pre-fill games, sensitivity, and your exit line. You can change
-            anything on the next steps.
+            Pick the closest match — we will pre-fill Stake traps, sensitivity, and your exit line. You can
+            change anything on the next steps.
           </p>
           <div className="sensitivity-card-grid">
             {TRAP_CARDS.map((card) => (
@@ -284,42 +300,28 @@ export function OnboardingWizard({
       {step === 2 && (
         <>
           <h2 id="onboarding-title-2" className="public-page-card__title">
-            Block problem games
+            Block the wrong lobby
           </h2>
           <p className="public-page-card__copy">
-            Toggle games you want off-limits. You can add custom URLs and keywords later in{' '}
+            Pick Stake categories you want off-limits — group pages and direct game links both count. Zero
+            selections is fine; you can add traps anytime in{' '}
             <Link href="/settings#game-exclusion">Settings</Link>.
           </p>
-          <div className="dashboard-field">
-            <label htmlFor="preset-mode">Default mode for selected games</label>
-            <select
-              id="preset-mode"
-              value={presetMode}
-              onChange={(e) => setPresetMode(e.target.value as GameExclusionMode)}
-            >
-              <option value="block">Block — immediate lockout</option>
-              <option value="warn">Warn — 10s countdown first</option>
-            </select>
-          </div>
-          <div className="onboarding-preset-grid">
-            {GAME_EXCLUSION_PRESETS.map((preset) => (
-              <label key={preset.label} className="dashboard-checkbox onboarding-preset-chip">
-                <input
-                  type="checkbox"
-                  checked={enabledPresets.has(preset.label)}
-                  onChange={(e) => {
-                    setEnabledPresets((prev) => {
-                      const next = new Set(prev);
-                      if (e.target.checked) next.add(preset.label);
-                      else next.delete(preset.label);
-                      return next;
-                    });
-                  }}
-                />
-                {preset.label}
-              </label>
-            ))}
-          </div>
+          <StakeCategoryPicker
+            selected={selectedCategories}
+            defaultMode={categoryDefaultMode}
+            overrides={categoryOverrides}
+            onChangeSelected={setSelectedCategories}
+            onChangeDefaultMode={setCategoryDefaultMode}
+            onChangeOverride={(id, mode) => {
+              setCategoryOverrides((prev) => {
+                const next = { ...prev };
+                if (mode === undefined) delete next[id];
+                else next[id] = mode;
+                return next;
+              });
+            }}
+          />
           <div className="onboarding-wizard__nav">
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>
               Back
@@ -436,6 +438,12 @@ export function OnboardingWizard({
             You are signed in on the web — open the extension side panel and your line syncs automatically. No
             second Discord login in the extension.
           </p>
+          {selectedCategories.size === 0 ? (
+            <p className="public-page-card__copy">
+              No Stake traps selected yet — add category blocks anytime under{' '}
+              <Link href="/settings#game-exclusion">Settings → Game blocks</Link>.
+            </p>
+          ) : null}
           <p className="public-page-card__copy">
             Need the extension?{' '}
             <a href={installHref} target="_blank" rel="noopener noreferrer" className="dashboard-link">

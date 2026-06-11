@@ -293,7 +293,17 @@ export default function GameExclusionEditor({ value, onChange }: GameExclusionEd
             .map((entry) => (
               <li key={entry.id} className="game-exclusion-list-item">
                 <div className="game-exclusion-list-item__main">
-                  <span className="game-exclusion-list-item__label">{entry.label}</span>
+                  <span className="game-exclusion-list-item__label">
+                    {entry.label}
+                    {entry.source === 'stake_category' ? (
+                      <span
+                        className="drift-status-card__badge drift-status-card__badge--live"
+                        style={{ marginLeft: '0.5rem', verticalAlign: 'middle' }}
+                      >
+                        Stake category
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="game-exclusion-list-item__patterns">
                     {entry.matchPatterns.slice(0, 3).join(', ')}
                     {entry.matchPatterns.length > 3 ? '…' : ''}

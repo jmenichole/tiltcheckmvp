@@ -6,10 +6,14 @@ import {
   GAME_EXCLUSION_PRESETS,
   type GameExclusionEntry,
   type GameExclusionMode,
+  type LockoutStyle,
 } from '@tiltcheck/shared';
 import { apiFetch } from '@/lib/api';
+import { extensionInstallHref } from '@/lib/extension-install';
 
 type RiskProfile = 'conservative' | 'moderate' | 'degen';
+
+type TrapPattern = 'game_trap' | 'autopilot' | 'chase' | 'heater' | 'skip';
 
 const SENSITIVITY_CARDS: Array<{
   id: RiskProfile;
@@ -37,6 +41,38 @@ const SENSITIVITY_CARDS: Array<{
   },
 ];
 
+const TRAP_CARDS: Array<{
+  id: TrapPattern;
+  title: string;
+  copy: string;
+}> = [
+  {
+    id: 'game_trap',
+    title: 'Specific games cook me',
+    copy: 'Crash, blackjack, slots — you already know the trap list.',
+  },
+  {
+    id: 'autopilot',
+    title: 'I click on autopilot',
+    copy: 'Fast spins before you notice the damage. Early warnings help.',
+  },
+  {
+    id: 'chase',
+    title: 'I chase losses',
+    copy: 'One bad run turns into a deposit spiral. Tighter brakes and longer lockouts.',
+  },
+  {
+    id: 'heater',
+    title: 'I give back wins',
+    copy: 'Up big, then donate it back. Shorter lockouts and friction before reload.',
+  },
+  {
+    id: 'skip',
+    title: 'Mix of everything',
+    copy: 'Skip the guesswork — you will tune games and sensitivity on the next steps.',
+  },
+];
+
 type Props = {
   initialGameExclusions: GameExclusionEntry[];
   initialRiskProfile: RiskProfile;
@@ -60,6 +96,49 @@ function presetEntry(
   };
 }
 
+function applyTrapDefaults(
+  trap: TrapPattern,
+): Partial<{
+  riskProfile: RiskProfile;
+  presetMode: GameExclusionMode;
+  sessionCapMinutes: number;
+  enabledPresets: Set<string>;
+  lockoutStyle: LockoutStyle;
+}> {
+  switch (trap) {
+    case 'game_trap':
+      return {
+        presetMode: 'block',
+        riskProfile: 'moderate',
+        sessionCapMinutes: 15,
+        enabledPresets: new Set(['Crash / Limbo', 'Slots', 'Blackjack']),
+      };
+    case 'autopilot':
+      return {
+        presetMode: 'warn',
+        riskProfile: 'conservative',
+        sessionCapMinutes: 15,
+        lockoutStyle: 'friction_first',
+      };
+    case 'chase':
+      return {
+        presetMode: 'block',
+        riskProfile: 'conservative',
+        sessionCapMinutes: 20,
+        lockoutStyle: 'hard_stop',
+      };
+    case 'heater':
+      return {
+        presetMode: 'warn',
+        riskProfile: 'moderate',
+        sessionCapMinutes: 10,
+        lockoutStyle: 'friction_first',
+      };
+    default:
+      return {};
+  }
+}
+
 export function OnboardingWizard({
   initialGameExclusions,
   initialRiskProfile,
@@ -68,8 +147,11 @@ export function OnboardingWizard({
   onSkip,
 }: Props) {
   const [step, setStep] = useState(0);
+  const [trapPattern, setTrapPattern] = useState<TrapPattern | null>(null);
   const [riskProfile, setRiskProfile] = useState<RiskProfile>(initialRiskProfile);
   const [sessionCapMinutes, setSessionCapMinutes] = useState(initialSessionCapMinutes);
+  const [lockoutStyle, setLockoutStyle] = useState<LockoutStyle>('friction_first');
+  const [futureMeNote, setFutureMeNote] = useState('');
   const [enabledPresets, setEnabledPresets] = useState<Set<string>>(() => {
     const labels = new Set(initialGameExclusions.map((e) => e.label));
     return new Set(GAME_EXCLUSION_PRESETS.filter((p) => labels.has(p.label)).map((p) => p.label));
@@ -78,7 +160,19 @@ export function OnboardingWizard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const steps = ['Welcome', 'Games', 'Sensitivity', 'Session cap', 'Done'] as const;
+  const steps = ['Welcome', 'Your pattern', 'Games', 'Sensitivity', 'Session cap', 'Done'] as const;
+  const installHref = extensionInstallHref();
+
+  function continueFromTrap(nextTrap: TrapPattern) {
+    setTrapPattern(nextTrap);
+    const defaults = applyTrapDefaults(nextTrap);
+    if (defaults.riskProfile) setRiskProfile(defaults.riskProfile);
+    if (defaults.presetMode) setPresetMode(defaults.presetMode);
+    if (defaults.sessionCapMinutes) setSessionCapMinutes(defaults.sessionCapMinutes);
+    if (defaults.lockoutStyle) setLockoutStyle(defaults.lockoutStyle);
+    if (defaults.enabledPresets) setEnabledPresets(defaults.enabledPresets);
+    setStep(2);
+  }
 
   async function finishWizard() {
     setSaving(true);
@@ -94,6 +188,7 @@ export function OnboardingWizard({
       body: JSON.stringify({
         riskProfile,
         gameExclusions,
+        demoMode: false,
         onboardingCompletedAt: new Date().toISOString(),
       }),
     });
@@ -108,7 +203,12 @@ export function OnboardingWizard({
       body: JSON.stringify({
         ruleType: 'session_cap',
         enabled: true,
-        config: { durationMinutes: sessionCapMinutes },
+        config: {
+          durationMinutes: sessionCapMinutes,
+          lockoutStyle,
+          snoozeEnabled: false,
+          futureMeNote: futureMeNote.trim().slice(0, 140),
+        },
       }),
     });
     if (!vaultRes.ok) {
@@ -154,6 +254,36 @@ export function OnboardingWizard({
       {step === 1 && (
         <>
           <h2 id="onboarding-title-1" className="public-page-card__title">
+            What usually cooks you?
+          </h2>
+          <p className="public-page-card__copy">
+            Pick the closest match — we will pre-fill games, sensitivity, and your exit line. You can change
+            anything on the next steps.
+          </p>
+          <div className="sensitivity-card-grid">
+            {TRAP_CARDS.map((card) => (
+              <button
+                key={card.id}
+                type="button"
+                className={`sensitivity-card${trapPattern === card.id ? ' sensitivity-card--selected' : ''}`}
+                onClick={() => continueFromTrap(card.id)}
+              >
+                <span className="sensitivity-card__title">{card.title}</span>
+                <span className="sensitivity-card__copy">{card.copy}</span>
+              </button>
+            ))}
+          </div>
+          <div className="onboarding-wizard__nav">
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(0)}>
+              Back
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <h2 id="onboarding-title-2" className="public-page-card__title">
             Block problem games
           </h2>
           <p className="public-page-card__copy">
@@ -191,19 +321,19 @@ export function OnboardingWizard({
             ))}
           </div>
           <div className="onboarding-wizard__nav">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(0)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>
               Back
             </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep(2)}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep(3)}>
               Continue
             </button>
           </div>
         </>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <>
-          <h2 id="onboarding-title-2" className="public-page-card__title">
+          <h2 id="onboarding-title-3" className="public-page-card__title">
             Tilt sensitivity
           </h2>
           <p className="public-page-card__copy">How early should we nudge you when pacing shifts?</p>
@@ -228,23 +358,24 @@ export function OnboardingWizard({
             ))}
           </div>
           <div className="onboarding-wizard__nav">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(2)}>
               Back
             </button>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep(3)}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => setStep(4)}>
               Continue
             </button>
           </div>
         </>
       )}
 
-      {step === 3 && (
+      {step === 4 && (
         <>
-          <h2 id="onboarding-title-3" className="public-page-card__title">
+          <h2 id="onboarding-title-4" className="public-page-card__title">
             Session cap
           </h2>
           <p className="public-page-card__copy">
-            Minutes of Touch Grass lockout when tilt hits critical or you open a blocked game.
+            Minutes of Touch Grass lockout when tilt hits critical or you open a blocked game. You chose the
+            boundary — we enforce it.
           </p>
           <div className="dashboard-field">
             <label htmlFor="wizard-session-cap">Lockout duration (minutes)</label>
@@ -257,14 +388,37 @@ export function OnboardingWizard({
               onChange={(e) => setSessionCapMinutes(Number(e.target.value))}
             />
           </div>
+          <div className="dashboard-field">
+            <label htmlFor="wizard-lockout-style">When the line hits</label>
+            <select
+              id="wizard-lockout-style"
+              value={lockoutStyle}
+              onChange={(e) => setLockoutStyle(e.target.value as LockoutStyle)}
+            >
+              <option value="friction_first">Friction first — past-you note, then lock</option>
+              <option value="hard_stop">Hard stop — lock the tab immediately</option>
+            </select>
+          </div>
+          <div className="dashboard-field">
+            <label htmlFor="wizard-future-me">Past-you note (optional)</label>
+            <textarea
+              id="wizard-future-me"
+              rows={2}
+              maxLength={140}
+              placeholder="Why future-you wanted this break…"
+              value={futureMeNote}
+              onChange={(e) => setFutureMeNote(e.target.value)}
+            />
+            <p className="public-page-meta-strip">{futureMeNote.length}/140</p>
+          </div>
           <div className="onboarding-wizard__nav">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(2)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(3)}>
               Back
             </button>
             <button
               type="button"
               className="btn btn-primary btn-sm"
-              onClick={() => setStep(4)}
+              onClick={() => setStep(5)}
               disabled={sessionCapMinutes < 1}
             >
               Continue
@@ -273,18 +427,26 @@ export function OnboardingWizard({
         </>
       )}
 
-      {step === 4 && (
+      {step === 5 && (
         <>
-          <h2 id="onboarding-title-4" className="public-page-card__title">
+          <h2 id="onboarding-title-5" className="public-page-card__title">
             You are set
           </h2>
           <p className="public-page-card__copy">
-            Install the extension and connect Discord so exclusions and your cap sync to casino tabs.{' '}
-            <Link href="/extension">Extension setup</Link>
+            You are signed in on the web — open the extension side panel and your line syncs automatically. No
+            second Discord login in the extension.
+          </p>
+          <p className="public-page-card__copy">
+            Need the extension?{' '}
+            <a href={installHref} target="_blank" rel="noopener noreferrer" className="dashboard-link">
+              Install TiltCheck
+            </a>
+            , then refresh this dashboard once. Demo mode turns off when you finish — lockouts will fire on
+            casino tabs.
           </p>
           {error ? <p className="dashboard-status dashboard-status--error">{error}</p> : null}
           <div className="onboarding-wizard__nav">
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(3)}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(4)}>
               Back
             </button>
             <button type="button" className="btn btn-primary btn-sm" onClick={finishWizard} disabled={saving}>

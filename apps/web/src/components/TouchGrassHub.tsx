@@ -120,7 +120,7 @@ const BREAK_CARDS = [
     external: false,
     step: '12',
     title: 'Extension sync',
-    copy: 'Reconnect Discord so your line follows you across tabs.',
+    copy: 'Install the extension — you are already signed in on the web, so your line syncs automatically.',
   },
 ] as const;
 

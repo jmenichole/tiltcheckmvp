@@ -3,7 +3,7 @@
 import { getSessionCapConfig, type VaultRuleSnapshot } from './vault-sync.js';
 import { normalizeVaultPledgeConfig, isPledgeActive } from '@tiltcheck/shared';
 import { webBaseUrl, chromeWebStoreUrl, extensionInstallHref } from './config.js';
-import { resolveApiBaseUrl } from './config.js';
+import { openWebLogin, startWebAuthPoll, stopWebAuthPoll } from './extension-login.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
 import type { TcLiveState } from './alert-summary.js';
 import type { ExclusionSuggestion } from '@tiltcheck/shared';
@@ -73,6 +73,32 @@ function renderPledgeLine(rules: VaultRuleSnapshot[]): string {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   return `Vault pledge: ${h}h ${m}m left`;
+}
+
+function renderAccountCard(
+  loggedIn: boolean,
+  demoMode: boolean,
+  username: string | undefined,
+  capArmed: boolean,
+  gameCount: number,
+  riskProfile: keyof typeof RISK_LABEL,
+): string {
+  if (!loggedIn) {
+    return `
+      <div class="account-card account-card--guest">
+        <p class="account-card__eyebrow">Not signed in</p>
+        <p class="account-card__copy">Demo warnings only. Sign in on the web to arm your exit line on every tab.</p>
+      </div>`;
+  }
+  const status = capArmed
+    ? `Exit line armed · ${gameCount} block${gameCount === 1 ? '' : 's'} · ${RISK_LABEL[riskProfile]}`
+    : 'Signed in — set My Line on dashboard, then Sync rules';
+  const demoNote = demoMode ? ' · Demo mode on' : '';
+  return `
+    <div class="account-card">
+      <p class="account-card__name">@${escapeHtml(username ?? 'player')}</p>
+      <p class="account-card__status">${escapeHtml(status)}${escapeHtml(demoNote)}</p>
+    </div>`;
 }
 
 function renderPactLine(
@@ -197,6 +223,22 @@ function injectStyles(): void {
     }
     .panel-footer a { color:#17c3b2; text-decoration:none; }
     .msg { font-size:11px; color:#6b7280; min-height:16px; margin-bottom:10px; }
+    .account-card {
+      padding: 12px 14px; border-radius: 12px; margin-bottom: 12px;
+      border: 1px solid rgba(23,195,178,.35); background: #0f1419;
+    }
+    .account-card--guest { border-color: rgba(30,37,51,.9); background: #12161e; }
+    .account-card__eyebrow {
+      margin: 0 0 6px; font: 700 10px/1 ui-monospace,monospace;
+      letter-spacing: .12em; text-transform: uppercase; color: #6b7280;
+    }
+    .account-card__name { margin: 0 0 4px; font-size: 15px; font-weight: 700; color: #f3f4f6; }
+    .account-card__status, .account-card__copy {
+      margin: 0; font-size: 11px; color: #9ca3af; line-height: 1.5;
+    }
+    .actions--single { grid-template-columns: 1fr; }
+    .btn-full { width: 100%; margin-bottom: 8px; }
+    .copy--center { text-align: center; margin-bottom: 10px; }
   `;
   document.head.appendChild(style);
 }
@@ -258,9 +300,10 @@ async function render(): Promise<void> {
   app.innerHTML = `
     <header class="panel-header">
       <span class="logo">TiltCheck</span>
-      <span class="user">${loggedIn ? `@${escapeHtml(username ?? 'player')}` : 'Not connected'}${demoMode && loggedIn ? ' · Demo mode' : ''}</span>
+      <span class="user">${loggedIn ? 'Signed in' : 'Guest'}</span>
     </header>
     <div class="panel-body">
+      ${renderAccountCard(loggedIn, demoMode, username, capArmed, gameExclusions.length, riskProfile)}
       <nav class="quick-links" aria-label="Quick links">
         <a class="quick-link" href="${escapeHtml(web)}/dashboard" target="_blank" rel="noopener">My vault</a>
         <a class="quick-link" href="${escapeHtml(web)}/touch-grass" target="_blank" rel="noopener">Touch Grass</a>
@@ -276,12 +319,19 @@ async function render(): Promise<void> {
       ${renderSuggestion(live?.tiltSuggestion ?? null)}
       ${renderAv(av, live?.autoVaultSite ?? null)}
       <p class="msg" id="tc-panel-msg"></p>
-      <div class="actions">
-        <button type="button" class="btn btn-primary" id="tc-sync">Sync rules</button>
-        ${loggedIn ? `<button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>` : `<button type="button" class="btn btn-secondary" id="tc-connect">Connect Discord</button>`}
+      <div class="actions${loggedIn ? '' : ' actions--single'}">
+        ${loggedIn
+          ? `<button type="button" class="btn btn-primary" id="tc-sync">Sync rules</button>
+        <button type="button" class="btn btn-secondary" id="tc-vault">My vault</button>`
+          : `<button type="button" class="btn btn-primary" id="tc-signin">Sign in with Discord</button>`}
       </div>
-      ${loggedIn ? `<button type="button" class="btn btn-ghost" id="tc-disconnect" style="width:100%;margin-bottom:8px;font-size:11px">Disconnect extension</button>` : ''}
-      ${loggedIn ? '' : `<p class="copy">Connect to sync game blocks, tilt sensitivity, and your exit line.</p>`}
+      ${loggedIn
+        ? `<div class="actions">
+        <button type="button" class="btn btn-secondary" id="tc-settings">Settings</button>
+        <button type="button" class="btn btn-ghost" id="tc-disconnect">Disconnect</button>
+      </div>`
+        : `<p class="copy copy--center">Opens TiltCheck in a new tab. We sync your line when you land on dashboard.</p>
+      <button type="button" class="btn btn-ghost btn-full" id="tc-sync-web">Already signed in? Sync now</button>`}
     </div>
     <footer class="panel-footer">
       <a href="${escapeHtml(installHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(installLinkLabel)}</a>
@@ -319,15 +369,33 @@ async function render(): Promise<void> {
     });
   });
 
-  document.getElementById('tc-connect')?.addEventListener('click', async () => {
-    const api = await resolveApiBaseUrl();
-    const extId = chrome.runtime.id;
-    chrome.windows.create({
-      url: `${api}/auth/discord/login?source=ext&extension_id=${encodeURIComponent(extId)}`,
-      type: 'popup',
-      width: 520,
-      height: 720,
+  document.getElementById('tc-signin')?.addEventListener('click', () => {
+    setMsg('Opening sign-in…');
+    void openWebLogin('/dashboard');
+    startWebAuthPoll(() => {
+      setMsg('Signed in — syncing rules…');
+      chrome.runtime.sendMessage({ type: 'sync-vault' }, () => void render());
     });
+  });
+
+  document.getElementById('tc-sync-web')?.addEventListener('click', () => {
+    setMsg('Syncing from web…');
+    chrome.runtime.sendMessage({ type: 'sync-web-auth' }, () => {
+      chrome.storage.local.get(['tc_session_token'], (s) => {
+        if (s.tc_session_token) {
+          chrome.runtime.sendMessage({ type: 'sync-vault' }, () => {
+            setMsg('Synced from web.');
+            void render();
+          });
+        } else {
+          setMsg('No web session found — sign in first.');
+        }
+      });
+    });
+  });
+
+  document.getElementById('tc-vault')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: `${webBaseUrl()}/dashboard` });
   });
 
   document.getElementById('tc-settings')?.addEventListener('click', () => {
@@ -349,7 +417,7 @@ async function render(): Promise<void> {
     const label = (e.currentTarget as HTMLElement).getAttribute('data-add-warn');
     const token = stored.tc_session_token as string | undefined;
     if (!label || !token) {
-      setMsg('Connect first.');
+      setMsg('Sign in first.');
       return;
     }
     setMsg('Adding…');
@@ -401,6 +469,8 @@ function registerSidePanelWindowSync(): void {
 }
 
 registerSidePanelWindowSync();
+
+window.addEventListener('pagehide', () => stopWebAuthPoll());
 
 void (async () => {
   const { stored } = await loadContext();

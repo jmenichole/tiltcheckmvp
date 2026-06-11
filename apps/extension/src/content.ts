@@ -28,6 +28,7 @@ import { observeTiltPatterns } from './tilt-pattern-learn.js';
 import { dismissTiltSuggestionToast, showTiltSuggestionToast } from './tilt-suggestion-toast.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
 import type { ExclusionSuggestion } from '@tiltcheck/shared';
+import { bootstrapWebAuthSync } from './extension-auth.js';
 import { formatAlertSummary, publishLiveState } from './alert-summary.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
 import { installContentBridge } from './content-bridge.js';
@@ -39,6 +40,9 @@ let pactAckTimer: number | null = null;
 
 const hostname = window.location.hostname.toLowerCase();
 const autoVaultSiteName = getAutoVaultSiteName();
+
+bootstrapWebAuthSync();
+
 const excluded =
   hostname.includes('discord.com') ||
   (hostname === 'localhost' && ['3000', '3001'].includes(window.location.port));
@@ -352,20 +356,4 @@ if (!excluded) {
   window.setInterval(() => {
     handleTiltIndicators(detector.analyze());
   }, 2000);
-
-  window.addEventListener('message', (event) => {
-    if (event.source !== window) return;
-    if (event.data?.type === 'discord-auth-success' && event.data?.token) {
-      chrome.storage.local.set({
-        tc_session_token: event.data.token,
-        tc_username: event.data.username ?? 'discord',
-        tc_demo: false,
-      });
-      chrome.runtime.sendMessage({ type: 'sync-vault' }).catch(() => {});
-      return;
-    }
-    if (event.data?.type === 'tc-web-logout') {
-      chrome.runtime.sendMessage({ type: 'tc-logout' }).catch(() => {});
-    }
-  });
 }

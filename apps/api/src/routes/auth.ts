@@ -110,16 +110,17 @@ authRoutes.get('/discord/callback', async (c) => {
     const safeToken = JSON.stringify(token);
     const safeUser = JSON.stringify(user.username);
     return c.html(`<!DOCTYPE html><html><body><script>
-      try {
-        if (window.opener) {
-          window.opener.postMessage({
-            type: 'discord-auth-success',
-            token: ${safeToken},
-            username: ${safeUser}
-          }, '*');
-        }
-      } catch (e) {}
-      window.close();
+      (function () {
+        var payload = {
+          type: 'discord-auth-success',
+          token: ${safeToken},
+          username: ${safeUser}
+        };
+        try {
+          window.postMessage(payload, window.location.origin);
+        } catch (e) {}
+        setTimeout(function () { window.close(); }, 500);
+      })();
     </script><p>Connected. You can close this window.</p></body></html>`);
   }
   const redirectPath = entry.redirect?.startsWith('/') ? entry.redirect : '/dashboard';

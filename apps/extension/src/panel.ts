@@ -409,7 +409,9 @@ void (async () => {
     });
     return;
   }
-  await render();
+  chrome.runtime.sendMessage({ type: 'sync-web-auth' }, () => {
+    void render();
+  });
 })();
 
 chrome.storage.onChanged.addListener((changes, area) => {

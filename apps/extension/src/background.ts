@@ -1,6 +1,7 @@
 import { fetchVaultRules } from './vault-sync.js';
 import { syncSettingsToStorage } from './settings-sync.js';
 import { clearExtensionSession } from './session-clear.js';
+import { syncAuthFromWebTabs } from './extension-auth.js';
 import {
   expandWindowForSidePanel,
   registerSidePanelWindowResize,
@@ -80,6 +81,13 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     void (async () => {
       await clearExtensionSession();
       sendResponse({ ok: true });
+    })();
+    return true;
+  }
+  if (message?.type === 'sync-web-auth') {
+    void (async () => {
+      const ok = await syncAuthFromWebTabs();
+      sendResponse({ ok });
     })();
     return true;
   }

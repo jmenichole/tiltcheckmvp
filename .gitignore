@@ -7,6 +7,12 @@ dist
 *.log
 .DS_Store
 coverage
+apps/web/.playwright-browsers
+apps/web/test-results
+apps/web/playwright-report
+**/.playwright-browsers
+**/test-results
+*.tsbuildinfo
 data/email-bonus-feed.json
 data/crawler-seen.json
 scripts/logs/

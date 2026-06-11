@@ -1,7 +1,12 @@
 import { fetchVaultRules } from './vault-sync.js';
 import { syncSettingsToStorage } from './settings-sync.js';
 import { clearExtensionSession } from './session-clear.js';
-import { syncAuthFromWebTabs } from './extension-auth.js';
+import {
+  syncAuthFromWebTabs,
+  isDiscordAuthPayload,
+  saveDiscordAuth,
+  trustedApiOriginAsync,
+} from './extension-auth.js';
 import {
   expandWindowForSidePanel,
   registerSidePanelWindowResize,
@@ -122,4 +127,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
   return false;
+});
+
+chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
+  if (!sender.url?.includes('/auth/discord/callback')) {
+    return;
+  }
+  void (async () => {
+    try {
+      const origin = new URL(sender.url!).origin;
+      if (!(await trustedApiOriginAsync(origin))) return;
+      if (!isDiscordAuthPayload(message)) return;
+      await saveDiscordAuth(message.token, message.username ?? 'discord');
+      sendResponse({ ok: true });
+    } catch {
+      sendResponse({ ok: false });
+    }
+  })();
+  return true;
 });

@@ -7,7 +7,10 @@ import {
 } from '@tiltcheck/db';
 import { parseCookies, sessionCookieName, signSession, verifySession } from '../session.js';
 
-const pendingStates = new Map<string, { createdAt: number; source: 'web' | 'ext'; redirect?: string }>();
+const pendingStates = new Map<
+  string,
+  { createdAt: number; source: 'web' | 'ext'; redirect?: string; extensionId?: string }
+>();
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 function discordConfig() {
@@ -31,8 +34,11 @@ export const authRoutes = new Hono();
 authRoutes.get('/discord/login', (c) => {
   const source = c.req.query('source') === 'ext' ? 'ext' : 'web';
   const redirect = c.req.query('redirect') ?? undefined;
+  const rawExtId = c.req.query('extension_id') ?? '';
+  const extensionId =
+    source === 'ext' && /^[a-p]{32}$/i.test(rawExtId) ? rawExtId.toLowerCase() : undefined;
   const state = `${source}_${crypto.randomUUID()}`;
-  pendingStates.set(state, { createdAt: Date.now(), source, redirect });
+  pendingStates.set(state, { createdAt: Date.now(), source, redirect, extensionId });
   const { clientId, redirectUri } = discordConfig();
   if (!clientId) {
     return c.text('Discord OAuth not configured', 503);
@@ -109,17 +115,35 @@ authRoutes.get('/discord/callback', async (c) => {
   if (entry.source === 'ext') {
     const safeToken = JSON.stringify(token);
     const safeUser = JSON.stringify(user.username);
+    const safeExtId = JSON.stringify(entry.extensionId ?? '');
     return c.html(`<!DOCTYPE html><html><body><script>
       (function () {
+        var extId = ${safeExtId};
         var payload = {
           type: 'discord-auth-success',
           token: ${safeToken},
           username: ${safeUser}
         };
-        try {
-          window.postMessage(payload, window.location.origin);
-        } catch (e) {}
-        setTimeout(function () { window.close(); }, 500);
+        function deliver() {
+          try {
+            window.postMessage(payload, window.location.origin);
+          } catch (e) {}
+          if (extId && typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+            try {
+              chrome.runtime.sendMessage(extId, payload, function () {});
+            } catch (e) {}
+          }
+        }
+        deliver();
+        var attempts = 0;
+        var retry = setInterval(function () {
+          deliver();
+          if (++attempts >= 12) clearInterval(retry);
+        }, 250);
+        setTimeout(function () {
+          clearInterval(retry);
+          window.close();
+        }, 3500);
       })();
     </script><p>Connected. You can close this window.</p></body></html>`);
   }

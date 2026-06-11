@@ -321,8 +321,9 @@ async function render(): Promise<void> {
 
   document.getElementById('tc-connect')?.addEventListener('click', async () => {
     const api = await resolveApiBaseUrl();
+    const extId = chrome.runtime.id;
     chrome.windows.create({
-      url: `${api}/auth/discord/login?source=ext`,
+      url: `${api}/auth/discord/login?source=ext&extension_id=${encodeURIComponent(extId)}`,
       type: 'popup',
       width: 520,
       height: 720,

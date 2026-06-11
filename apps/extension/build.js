@@ -10,10 +10,10 @@ const DEFAULT_API_URL = 'https://tiltcheck-api-production.up.railway.app';
 const DEFAULT_WEB_URL = 'https://tiltcheckmvp-production.up.railway.app';
 const DEFAULT_CWS_URL = '';
 
+const apiUrl = (process.env.EXTENSION_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
+
 const define = {
-  'process.env.EXTENSION_API_URL': JSON.stringify(
-    process.env.EXTENSION_API_URL || DEFAULT_API_URL,
-  ),
+  'process.env.EXTENSION_API_URL': JSON.stringify(apiUrl),
   'process.env.EXTENSION_WEB_URL': JSON.stringify(
     process.env.EXTENSION_WEB_URL || process.env.NEXT_PUBLIC_WEB_URL || DEFAULT_WEB_URL,
   ),
@@ -47,6 +47,13 @@ async function build() {
   });
 
   await esbuild.build({
+    ...sharedBuild,
+    entryPoints: [path.join(__dirname, 'src/oauth-callback.ts')],
+    outfile: path.join(dist, 'oauth-callback.js'),
+    format: 'iife',
+  });
+
+  await esbuild.build({
     entryPoints: [path.join(__dirname, 'src/autovault/nuts-main.ts')],
     outfile: path.join(dist, 'autovault-nuts-main.js'),
     bundle: true,
@@ -70,7 +77,26 @@ async function build() {
     format: 'esm',
   });
 
-  await fs.copyFile(path.join(__dirname, 'src/manifest.json'), path.join(dist, 'manifest.json'));
+  const manifestSrc = path.join(__dirname, 'src/manifest.json');
+  const manifest = JSON.parse(await fs.readFile(manifestSrc, 'utf8'));
+  manifest.externally_connectable = { matches: [`${apiUrl}/*`] };
+  const scripts = manifest.content_scripts ?? [];
+  const oauthMatch = `${apiUrl}/auth/discord/callback*`;
+  if (!scripts.some((s) => JSON.stringify(s.matches).includes('discord/callback'))) {
+    scripts.push({
+      matches: [oauthMatch],
+      js: ['oauth-callback.js'],
+      run_at: 'document_start',
+    });
+  } else {
+    for (const s of scripts) {
+      if (JSON.stringify(s.matches).includes('discord/callback')) {
+        s.matches = [oauthMatch];
+      }
+    }
+  }
+  manifest.content_scripts = scripts;
+  await fs.writeFile(path.join(dist, 'manifest.json'), JSON.stringify(manifest, null, 2));
   await fs.copyFile(path.join(__dirname, 'src/sidepanel.html'), path.join(dist, 'sidepanel.html'));
   console.log('Extension built to dist/');
 }

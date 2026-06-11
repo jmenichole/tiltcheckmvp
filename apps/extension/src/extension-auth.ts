@@ -39,9 +39,10 @@ export async function saveDiscordAuth(token: string, username: string): Promise<
 export function registerDiscordAuthListener(): void {
   window.addEventListener('message', (event) => {
     if (!isDiscordAuthPayload(event.data)) return;
+    if (event.source !== window) return;
     void (async () => {
-      if (event.source !== window) return;
-      if (!(await trustedApiOriginAsync(event.origin))) return;
+      const onCallback = location.pathname.includes('/auth/discord/callback');
+      if (!onCallback && !(await trustedApiOriginAsync(event.origin))) return;
       await saveDiscordAuth(event.data.token, event.data.username ?? 'discord');
     })();
   });

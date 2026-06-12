@@ -1,0 +1,45 @@
+# Deploy web + API to Railway after CI passes on main.
+# Requires repo secret RAILWAY_TOKEN (Project Token from Railway → Project → Settings → Tokens).
+
+name: Deploy Railway
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-railway-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: web
+            service_id: aab55075-8fbb-4e0d-be80-81a88c7a5e3d
+          - name: tiltcheck-api
+            service_id: db1349cb-1b0e-45f2-9e48-767b9452730b
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli@5.2.0
+
+      - name: Deploy ${{ matrix.name }}
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway up \
+            --service="${{ matrix.service_id }}" \
+            --environment=production \
+            --ci \
+            --detach \
+            --message "GitHub Actions deploy ${GITHUB_SHA}"

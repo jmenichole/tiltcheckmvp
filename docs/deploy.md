@@ -4,7 +4,16 @@ TiltCheck v2 runs as **two Railway services** (web + api) connected to one Supab
 
 ## Git → Railway (branch sync)
 
-Railway auto-deploys from GitHub branch **`main`** (`jmenichole/tiltcheckmvp`). Pushes to **`master` only** do not trigger deploys.
+Railway auto-deploys from GitHub branch **`main`** (`jmenichole/tiltcheckmvp`) when the GitHub integration is active and billing is current. Pushes to **`master` only** do not trigger deploys.
+
+**If pushes to `main` stop deploying** (last deploy stuck on an old commit):
+
+1. **Railway billing** — expired trials block new deploys. In [Railway](https://railway.com) → workspace → **Upgrade** or attach a plan.
+2. **Reconnect GitHub** — Project → **Settings** → **GitHub** → confirm repo `jmenichole/tiltcheckmvp`, branch `main`, auto-deploy on.
+3. **GitHub Actions fallback** — [`.github/workflows/deploy-railway.yml`](../.github/workflows/deploy-railway.yml) deploys after CI passes on `main`:
+   - Railway → project **endearing-upliftment** → **Settings** → **Tokens** → create a **Project Token** (production).
+   - GitHub → repo **Settings** → **Secrets and variables** → **Actions** → add secret `RAILWAY_TOKEN`.
+   - Push to `main`; **Deploy Railway** runs after **CI** succeeds.
 
 | Workflow | Command |
 |----------|---------|
@@ -19,7 +28,14 @@ git branch -M main
 git push -u origin main
 ```
 
-`railway redeploy` restarts the last image without rebuilding. After pushing code, wait for GitHub deploy or run `railway up -s tiltcheckmvp` / `railway up -s tiltcheck-api`.
+`railway redeploy` restarts the last image without rebuilding. CLI deploy: `railway up -s web` / `railway up -s tiltcheck-api` (requires active Railway plan).
+
+### Production service IDs (GitHub Actions)
+
+| Service | Railway name | Service ID | URL |
+|---------|--------------|------------|-----|
+| Web | `web` | `aab55075-8fbb-4e0d-be80-81a88c7a5e3d` | `https://tiltcheckmvp-production.up.railway.app` |
+| API | `tiltcheck-api` | `db1349cb-1b0e-45f2-9e48-767b9452730b` | `https://tiltcheck-api-production.up.railway.app` |
 
 ## Services
 

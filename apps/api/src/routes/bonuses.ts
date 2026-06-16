@@ -1,3 +1,4 @@
+// © 2024–2026 TiltCheck Ecosystem. All Rights Reserved. Last Updated: 2026-06-16
 import { Hono } from 'hono';
 import {
   STATIC_BONUS_PICKS,
@@ -6,6 +7,7 @@ import {
   type UpstreamBonusPayload,
 } from '../lib/bonus-fallback.js';
 import { buildInboxBonusResponse } from '../lib/bonus-inbox.js';
+import { buildDailyBonusFeed } from '../lib/daily-bonus-feed.js';
 
 export const bonusesRoutes = new Hono();
 
@@ -127,6 +129,27 @@ bonusesRoutes.get('/inbox', async (c) => {
     source: 'inbox',
   });
   return c.json({ success: true, ...inbox });
+});
+
+bonusesRoutes.get('/daily-feed', async (c) => {
+  try {
+    const usOnly = c.req.query('usOnly') !== 'false';
+    const feed = await buildDailyBonusFeed({ usOnly });
+    return c.json({
+      success: true,
+      ...feed,
+    });
+  } catch (error) {
+    console.error('[Bonuses] Failed to build daily bonus feed:', error);
+    return c.json(
+      {
+        success: false,
+        error: 'DAILY_FEED_BUILD_FAILED',
+        message: 'Could not build unified daily bonus feed.',
+      },
+      500,
+    );
+  }
 });
 
 bonusesRoutes.get('/picks', async (c) => {

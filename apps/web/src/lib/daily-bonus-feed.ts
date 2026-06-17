@@ -1,0 +1,52 @@
+// © 2024–2026 TiltCheck Ecosystem. All Rights Reserved. Last Updated: 2026-06-16
+
+export type BonusFeedSourceKey = 'collectclock' | 'email-inbox' | 'local-fallback';
+
+export interface DailyBonusFeedEntry {
+  id: string;
+  brand: string;
+  bonus: string;
+  url: string;
+  verified: string;
+  code: string | null;
+  sources: BonusFeedSourceKey[];
+  bonusType: string | null;
+  bonusValue: string | null;
+  expiresAt: string | null;
+  expiryMessage: string | null;
+  imageUrl: string | null;
+  isUsCasino: boolean;
+  casinoCategory: string | null;
+  trustScore: number | null;
+}
+
+export interface BonusSourceStatus {
+  key: BonusFeedSourceKey;
+  label: string;
+  available: boolean;
+  count: number;
+  updatedAt: string | null;
+  detail: string;
+}
+
+export interface DailyBonusFeedResponse {
+  success?: boolean;
+  updatedAt: string;
+  total: number;
+  usTotal: number;
+  data: DailyBonusFeedEntry[];
+  sources: BonusSourceStatus[];
+}
+
+export const SOURCE_BADGE_LABELS: Record<BonusFeedSourceKey, string> = {
+  collectclock: 'CollectClock',
+  'email-inbox': 'Inbox',
+  'local-fallback': 'Cache',
+};
+
+export function getDailyFeedApiUrl(usOnly = true): string {
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'https://api.tiltcheck.me';
+  const suffix = usOnly ? '?usOnly=true' : '?usOnly=false';
+  return `${apiBase.replace(/\/$/, '')}/bonuses/daily-feed${suffix}`;
+}

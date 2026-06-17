@@ -2,6 +2,8 @@
 
 Architecture approved for inbox marketing offers. **No wallet or claim automation** — display only.
 
+Last Updated: 2026-06-16
+
 ## Flow
 
 ```mermaid
@@ -22,11 +24,54 @@ flowchart LR
 |-------|------------------------|----------------|
 | Crawler | `tiltcheck-monorepo/scripts/email-crawler.ts` | `scripts/email-crawler.ts` (`pnpm crawl:emails`) |
 | Ingest | `POST /rgaas/email-ingest` on production API | `POST /rgaas/email-ingest` on v2 API (parse + Supabase/JSON feed) |
-| Read API | `GET /bonuses?source=inbox` | `GET /bonuses`, `GET /bonuses/inbox`, `GET /bonuses/picks` |
-| Web | Legacy `tiltcheck.me/bonuses` | `/bonuses` — live inbox grid from your email feed |
+| Read API | `GET /bonuses?source=inbox` | `GET /bonuses`, `GET /bonuses/inbox`, `GET /bonuses/picks`, `GET /bonuses/daily-feed` |
+| Web | Legacy `tiltcheck.me/bonuses` | `/bonuses` — unified daily feed (CollectClock + inbox + cache) |
 | Dashboard | Legacy bonus hub | **Phase 3** — full list on Bonuses tab |
 
 ## v2 API contract
+
+**`GET /bonuses/daily-feed?usOnly=true`**
+
+Unified aggregator merging CollectClock upstream, active email inbox entries, and local `data/bonus-data.json` cache. US casino matching uses `data/sweepstakes-casinos.json` when present, otherwise `packages/trust/src/casinos.json` (Sweeps + Regulated categories).
+
+Query:
+
+| Param | Default | Description |
+|-------|---------|-------------|
+| `usOnly` | `true` | When `true`, only entries matched to US sweepstakes/regulated casinos are returned. Pass `usOnly=false` for the full merged feed. |
+
+```json
+{
+  "success": true,
+  "updatedAt": "2026-06-16T12:00:00.000Z",
+  "total": 42,
+  "usTotal": 38,
+  "data": [
+    {
+      "id": "mcluck::daily login::https://mcluck.com/",
+      "brand": "McLuck",
+      "bonus": "Daily login reward",
+      "url": "https://mcluck.com/",
+      "verified": "2026-06-16T10:00:00.000Z",
+      "code": null,
+      "sources": ["collectclock", "email-inbox"],
+      "bonusType": "Daily",
+      "bonusValue": "1 SC",
+      "expiresAt": null,
+      "expiryMessage": null,
+      "imageUrl": null,
+      "isUsCasino": true,
+      "casinoCategory": "Sweeps",
+      "trustScore": null
+    }
+  ],
+  "sources": [
+    { "key": "email-inbox", "label": "Email inbox", "available": true, "count": 12, "updatedAt": "...", "detail": "12 inbox promos parsed" },
+    { "key": "collectclock", "label": "CollectClock", "available": true, "count": 35, "updatedAt": "...", "detail": "35 CollectClock entries" },
+    { "key": "local-fallback", "label": "Local cache", "available": false, "count": 0, "updatedAt": null, "detail": "No local cache" }
+  ]
+}
+```
 
 **`GET /bonuses/picks?limit=3`**
 

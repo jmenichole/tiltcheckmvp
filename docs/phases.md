@@ -255,6 +255,9 @@ _Last updated: execution plan implementation (docs + trust API + vault + extensi
 
 ## Related docs
 
+- **[LAUNCH-CHECKLIST.md](./LAUNCH-CHECKLIST.md)** — operator steps M0–M5 (start here for cutover)
+- [2026-06-17-launch-cutover-plan.md](./superpowers/specs/2026-06-17-launch-cutover-plan.md) — strategy, KPIs, milestones (sync from v1 if missing)
+- [metrics-weekly.md](./metrics-weekly.md) — weekly KPI worksheet
 - [migration-from-v1.md](./migration-from-v1.md) — trust data and user cutover notes
 - [deploy.md](./deploy.md) — hosting and env
 - [cutover-checklist.md](./cutover-checklist.md) — DNS and redirect checklist

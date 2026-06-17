@@ -72,6 +72,12 @@ Point each Railway service at the **monorepo root** with the filter commands abo
 | `DISCORD_REDIRECT_URI_WEB` | `https://api-staging.tiltcheck.me/auth/discord/callback` | `https://api.tiltcheck.me/auth/discord/callback` | Yes (P2+) |
 | `SUPABASE_URL` | Staging project | Prod project | Yes (vault + scores) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Staging key | Prod key | Yes |
+| `EMAIL_INGEST_SECRET` | Random 32+ char string | Random 32+ char string | Yes (production email ingest) |
+| `EMAIL_INGEST_MAX_BYTES` | `524288` (512 KiB) | `524288` (512 KiB) | No (defaults to 512 KiB) |
+
+`EMAIL_INGEST_SECRET` gates `POST /rgaas/email-ingest`. Send it as `Authorization: Bearer <secret>` or `X-Email-Ingest-Key: <secret>`. The local email crawler (`pnpm crawl:emails`) uses the header form. Leave unset only in local dev; production must set a non-empty value.
+
+`EMAIL_INGEST_MAX_BYTES` caps the UTF-8 size of `raw_email` in the ingest JSON body. Oversize payloads return `413 PAYLOAD_TOO_LARGE`.
 
 ### Extension (Chrome Web Store)
 

@@ -35,7 +35,8 @@ test.describe('smoke', () => {
     const loginLink = page.getByRole('link', { name: /login with discord/i });
     await expect(loginLink).toBeVisible();
     const href = await loginLink.getAttribute('href');
-    expect(href).toMatch(/discord|auth|login/i);
+    expect(href).toMatch(/\/auth\/discord\/login/);
+    expect(href).toMatch(new RegExp(`^${apiUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
   });
 
   test('vault API requires auth', async ({ request }) => {

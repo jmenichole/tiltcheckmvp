@@ -20,6 +20,10 @@ async function proxy(request: Request, segments: string[]) {
     headers,
     body,
   });
+  const location = res.headers.get('Location');
+  if (location && res.status >= 300 && res.status < 400) {
+    return NextResponse.redirect(location, res.status);
+  }
   const text = await res.text();
   return new NextResponse(text, {
     status: res.status,

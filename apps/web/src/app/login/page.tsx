@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { apiBaseUrl } from '@/lib/api';
+import { getDiscordLoginUrl } from '@/lib/discord-login';
 
 const ERROR_COPY: Record<string, string> = {
   missing_token: 'Discord login did not return a session token. Try again.',
@@ -28,7 +28,7 @@ function LoginContent() {
   const redirect = searchParams.get('redirect');
   const errorKey = searchParams.get('error');
   const safeRedirect = redirect?.startsWith('/') ? redirect : '/dashboard';
-  const loginUrl = `${apiBaseUrl()}/auth/discord/login?source=web&redirect=${encodeURIComponent(safeRedirect)}`;
+  const loginUrl = getDiscordLoginUrl(safeRedirect);
   const errorMessage = errorKey ? (ERROR_COPY[errorKey] ?? 'Login failed. Try again.') : null;
 
   return (

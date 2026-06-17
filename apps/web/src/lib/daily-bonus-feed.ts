@@ -45,7 +45,8 @@ export const SOURCE_BADGE_LABELS: Record<BonusFeedSourceKey, string> = {
 };
 
 export function getDailyFeedApiUrl(usOnly = true): string {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const apiBase =
+    process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'https://api.tiltcheck.me';
   const suffix = usOnly ? '?usOnly=true' : '?usOnly=false';
   return `${apiBase.replace(/\/$/, '')}/bonuses/daily-feed${suffix}`;
 }

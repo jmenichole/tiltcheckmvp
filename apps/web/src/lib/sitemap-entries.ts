@@ -10,6 +10,7 @@ export type SitemapPageEntry = {
   category: SitemapCategory;
   changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'];
   priority: number;
+  href?: string;
 };
 
 export const SITEMAP_PAGE_ENTRIES: SitemapPageEntry[] = [
@@ -27,7 +28,8 @@ export const SITEMAP_PAGE_ENTRIES: SitemapPageEntry[] = [
 
 export const SITEMAP_CATEGORY_ORDER: SitemapCategory[] = ['Core', 'Casino setup', 'Legal & RG'];
 
-export function resolveSitemapHref(base: string, entry: SitemapPageEntry): string {
+export function resolveSitemapHref(base: string, entry: Pick<SitemapPageEntry, 'path' | 'href'>): string {
+  if (entry.href) return entry.href;
   const path = entry.path.startsWith('/') ? entry.path : `/${entry.path}`;
   return `${base.replace(/\/$/, '')}${path}`;
 }

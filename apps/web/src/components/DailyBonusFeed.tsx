@@ -70,10 +70,17 @@ function BonusCard({ entry }: { entry: DailyBonusFeedEntry }) {
 
   const handleCopy = useCallback(() => {
     if (!entry.code) return;
-    navigator.clipboard.writeText(entry.code).then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    });
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard
+        .writeText(entry.code)
+        .then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 2000);
+        })
+        .catch((err) => {
+          console.error('Failed to copy text:', err);
+        });
+    }
   }, [entry.code]);
 
   const expiryLabel = entry.expiresAt

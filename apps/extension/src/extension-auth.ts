@@ -35,6 +35,44 @@ export async function saveDiscordAuth(token: string, username: string): Promise<
   chrome.runtime.sendMessage({ type: 'sync-vault' }).catch(() => {});
 }
 
+async function validateSessionToken(token: string): Promise<string | null> {
+  try {
+    const apiBase = await resolveApiBaseUrl();
+    const res = await fetch(`${apiBase}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { user?: { username?: string } | null };
+    return data.user ? (data.user.username ?? 'discord') : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Read tc_session from the TiltCheck web domain (works without extension-handoff route). */
+export async function syncAuthFromWebCookie(): Promise<boolean> {
+  if (typeof chrome.cookies?.get !== 'function') return false;
+
+  const base = webBaseUrl().replace(/\/$/, '');
+  let cookie: chrome.cookies.Cookie | null;
+  try {
+    cookie = await chrome.cookies.get({ url: `${base}/`, name: 'tc_session' });
+  } catch {
+    return false;
+  }
+  if (!cookie?.value) return false;
+
+  const stored = await chrome.storage.local.get(['tc_session_token']);
+  if (stored.tc_session_token === cookie.value) return true;
+
+  const username = await validateSessionToken(cookie.value);
+  if (!username) return false;
+
+  await saveDiscordAuth(cookie.value, username);
+  return true;
+}
+
 /** OAuth callback page only: API origin + same-window postMessage. */
 export function registerDiscordAuthListener(): void {
   window.addEventListener('message', (event) => {
@@ -66,11 +104,12 @@ export async function syncAuthFromWebSession(): Promise<boolean> {
   if (!isTiltCheckWebHost()) return false;
   try {
     const res = await fetch(handoffUrl(), { credentials: 'include' });
-    if (res.status === 401) {
-      await clearExtensionSession();
+    if (res.status === 401) return false;
+    if (!res.ok) {
+      // Handoff route missing or misconfigured — background cookie sync is the fallback.
+      chrome.runtime.sendMessage({ type: 'sync-web-auth' }).catch(() => {});
       return false;
     }
-    if (!res.ok) return false;
     const data = (await res.json()) as { token?: string; username?: string };
     if (!data.token) return false;
 
@@ -80,6 +119,7 @@ export async function syncAuthFromWebSession(): Promise<boolean> {
     await saveDiscordAuth(data.token, data.username ?? 'discord');
     return true;
   } catch {
+    chrome.runtime.sendMessage({ type: 'sync-web-auth' }).catch(() => {});
     return false;
   }
 }
@@ -93,8 +133,17 @@ export function isTiltCheckWebHostname(hostname: string): boolean {
   }
 }
 
-/** Ask open TiltCheck web tabs to run handoff sync (panel / background). */
+function cookieDomainMatchesWeb(hostname: string): boolean {
+  const webHost = new URL(webBaseUrl()).hostname;
+  const bare = webHost.replace(/^www\./, '');
+  const hostBare = hostname.replace(/^www\./, '');
+  return hostBare === bare || hostname.endsWith('tiltcheck.me');
+}
+
+/** Sync from web session cookie, then ask open TiltCheck tabs to run handoff. */
 export async function syncAuthFromWebTabs(): Promise<boolean> {
+  if (await syncAuthFromWebCookie()) return true;
+
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) {
     if (tab.id == null || !tab.url) continue;
@@ -115,6 +164,16 @@ export async function syncAuthFromWebTabs(): Promise<boolean> {
     }
   }
   return false;
+}
+
+export function registerWebCookieChangeListener(): void {
+  if (typeof chrome.cookies?.onChanged?.addListener !== 'function') return;
+  chrome.cookies.onChanged.addListener((changeInfo) => {
+    if (changeInfo.cookie.name !== 'tc_session') return;
+    if (!cookieDomainMatchesWeb(changeInfo.cookie.domain.replace(/^\./, ''))) return;
+    if (changeInfo.removed) return;
+    void syncAuthFromWebCookie();
+  });
 }
 
 export function registerWebAuthRuntimeListener(): void {
@@ -140,5 +199,6 @@ export function bootstrapWebAuthSync(): void {
   registerWebLogoutListener();
   if (isTiltCheckWebHost()) {
     void syncAuthFromWebSession();
+    chrome.runtime.sendMessage({ type: 'sync-web-auth' }).catch(() => {});
   }
 }

@@ -28,6 +28,7 @@ import { observeTiltPatterns } from './tilt-pattern-learn.js';
 import { dismissTiltSuggestionToast, showTiltSuggestionToast } from './tilt-suggestion-toast.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
 import type { ExclusionSuggestion } from '@tiltcheck/shared';
+import { isMonitoredGamblingHost } from '@tiltcheck/shared';
 import { bootstrapWebAuthSync } from './extension-auth.js';
 import { formatAlertSummary, publishLiveState } from './alert-summary.js';
 import type { GameMatchStatus } from './game-exclusion-watcher.js';
@@ -46,8 +47,9 @@ bootstrapWebAuthSync();
 const excluded =
   hostname.includes('discord.com') ||
   (hostname === 'localhost' && ['3000', '3001'].includes(window.location.port));
+const isGamblingSite = isMonitoredGamblingHost(hostname);
 
-if (!excluded) {
+if (!excluded && isGamblingSite) {
   let vaultRules: VaultRuleSnapshot[] = [];
   let gameExclusions: GameExclusionEntry[] = [];
   let riskProfile: RiskProfile = 'moderate';
@@ -166,7 +168,7 @@ if (!excluded) {
       window.clearTimeout(pactAckTimer);
       pactAckTimer = null;
     }
-    if (isSessionPactAcknowledged() || !loggedIn) return;
+    if (!isGamblingSite || isSessionPactAcknowledged() || !loggedIn) return;
 
     pactAckTimer = window.setTimeout(() => {
       pactAckTimer = null;

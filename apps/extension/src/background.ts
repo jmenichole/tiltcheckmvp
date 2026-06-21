@@ -3,6 +3,7 @@ import { syncSettingsToStorage } from './settings-sync.js';
 import { clearExtensionSession } from './session-clear.js';
 import {
   syncAuthFromWebTabs,
+  registerWebCookieChangeListener,
   isDiscordAuthPayload,
   saveDiscordAuth,
   trustedApiOriginAsync,
@@ -22,6 +23,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 registerSidePanelWindowResize();
+registerWebCookieChangeListener();
 
 chrome.runtime.onStartup.addListener(() => {
   chrome.storage.local.get(['tc_session_token'], (stored) => {

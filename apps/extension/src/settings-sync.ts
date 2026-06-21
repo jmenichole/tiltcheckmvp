@@ -47,7 +47,9 @@ export async function fetchUserSettings(token: string): Promise<SyncedSettings |
 
 export async function pushSettingsToApi(
   token: string,
-  patch: Partial<Pick<SyncedSettings, 'gameExclusions' | 'riskProfile' | 'demoMode'>>,
+  patch: Partial<
+    Pick<SyncedSettings, 'gameExclusions' | 'riskProfile' | 'demoMode' | 'notificationsEnabled'>
+  >,
 ): Promise<{ ok: true; settings: SyncedSettings } | { ok: false; error: string }> {
   try {
     const res = await fetch(`${apiBaseUrl()}/user/settings`, {

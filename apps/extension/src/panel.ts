@@ -5,7 +5,13 @@ import { normalizeVaultPledgeConfig, isPledgeActive } from '@tiltcheck/shared';
 import { webBaseUrl, chromeWebStoreUrl, extensionInstallHref } from './config.js';
 import { openWebLogin, startWebAuthPoll, stopWebAuthPoll } from './extension-login.js';
 import { pushSuggestedGameExclusion } from './settings-sync.js';
+import {
+  injectSettingsStyles,
+  renderPanelSettings,
+  wirePanelSettings,
+} from './panel-settings.js';
 import type { TcLiveState } from './alert-summary.js';
+import type { GameExclusionEntry } from '@tiltcheck/shared';
 import type { ExclusionSuggestion } from '@tiltcheck/shared';
 import type { LockoutStyle } from '@tiltcheck/shared';
 
@@ -14,6 +20,9 @@ const RISK_LABEL = {
   moderate: 'Moderate',
   degen: 'Degen',
 } as const;
+
+let panelView: 'home' | 'settings' = 'home';
+let renderGeneration = 0;
 
 type AvSnapshot = {
   site: string;
@@ -101,6 +110,18 @@ function renderAccountCard(
     </div>`;
 }
 
+function formatCapDuration(minutes: number): string {
+  if (minutes >= 1440 && minutes % 1440 === 0) {
+    const days = minutes / 1440;
+    return days === 1 ? '24 hrs' : `${days} days`;
+  }
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const hrs = minutes / 60;
+    return hrs === 1 ? '1 hr' : `${hrs} hrs`;
+  }
+  return `${minutes} min`;
+}
+
 function renderPactLine(
   capArmed: boolean,
   cap: ReturnType<typeof getSessionCapConfig>,
@@ -110,7 +131,7 @@ function renderPactLine(
   if (!capArmed) return 'Exit line not set — save My Line on dashboard, then Sync rules';
   const parts = [
     `${RISK_LABEL[profile]} sensitivity`,
-    `${cap.durationMinutes}m · ${lockoutLabel(cap.lockoutStyle)}`,
+    `${formatCapDuration(cap.durationMinutes)} · ${lockoutLabel(cap.lockoutStyle)}`,
     `${blocks} block${blocks === 1 ? '' : 's'}`,
   ];
   if (cap.snoozeEnabled) parts.push('snooze on');
@@ -255,6 +276,7 @@ async function loadContext(): Promise<{
       'tc_risk_profile',
       'tc_vault_rules',
       'tc_game_exclusions',
+      'tc_notifications_enabled',
     ]),
     chrome.storage.session.get(['tc_live']),
   ]);
@@ -265,12 +287,59 @@ async function loadContext(): Promise<{
 }
 
 async function render(): Promise<void> {
+  const generation = ++renderGeneration;
   injectStyles();
   const app = document.getElementById('app');
   if (!app) return;
 
   const { stored, live } = await loadContext();
+  if (generation !== renderGeneration) return;
+
   const loggedIn = Boolean(stored.tc_session_token);
+  const token = stored.tc_session_token as string | undefined;
+
+  if (panelView === 'settings' && (!loggedIn || !token)) {
+    panelView = 'home';
+  }
+
+  if (panelView === 'settings' && loggedIn && token) {
+    injectSettingsStyles();
+    const vaultRules = (stored.tc_vault_rules as VaultRuleSnapshot[]) ?? [];
+    const gameExclusions = Array.isArray(stored.tc_game_exclusions)
+      ? (stored.tc_game_exclusions as GameExclusionEntry[])
+      : [];
+    app.innerHTML = renderPanelSettings({
+      token,
+      riskProfile:
+        (stored.tc_risk_profile as 'conservative' | 'moderate' | 'degen' | undefined) ??
+        'moderate',
+      cap: getSessionCapConfig(vaultRules),
+      gameExclusions,
+      demoMode: stored.tc_demo !== false,
+      notificationsEnabled: stored.tc_notifications_enabled !== false,
+    });
+    wirePanelSettings(app, {
+      ctx: {
+        token,
+        riskProfile:
+          (stored.tc_risk_profile as 'conservative' | 'moderate' | 'degen' | undefined) ??
+          'moderate',
+        cap: getSessionCapConfig(vaultRules),
+        gameExclusions,
+        demoMode: stored.tc_demo !== false,
+        notificationsEnabled: stored.tc_notifications_enabled !== false,
+      },
+      onBack: () => {
+        panelView = 'home';
+        void render();
+      },
+      onSaved: () => {
+        chrome.runtime.sendMessage({ type: 'sync-vault' }).catch(() => {});
+      },
+    });
+    return;
+  }
+
   const demoMode = !loggedIn || stored.tc_demo !== false;
   const username = stored.tc_username as string | undefined;
   const riskProfile = (stored.tc_risk_profile as keyof typeof RISK_LABEL) ?? 'moderate';
@@ -308,7 +377,6 @@ async function render(): Promise<void> {
         <a class="quick-link" href="${escapeHtml(web)}/dashboard" target="_blank" rel="noopener">My vault</a>
         <a class="quick-link" href="${escapeHtml(web)}/touch-grass" target="_blank" rel="noopener">Touch Grass</a>
         <a class="quick-link" href="${escapeHtml(web)}/casinos" target="_blank" rel="noopener">Casino trust</a>
-        <a class="quick-link" href="${escapeHtml(web)}/settings" target="_blank" rel="noopener">Settings</a>
       </nav>
       <div class="status ${isHeat ? 'status--heat' : ''}">
         <p class="status__label">${isHeat ? 'Needs attention' : 'This tab'}</p>
@@ -388,7 +456,7 @@ async function render(): Promise<void> {
             void render();
           });
         } else {
-          setMsg('No web session found — sign in first.');
+          setMsg('No web session found — open dashboard on tiltcheck, then try again.');
         }
       });
     });
@@ -399,7 +467,8 @@ async function render(): Promise<void> {
   });
 
   document.getElementById('tc-settings')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: `${webBaseUrl()}/settings` });
+    panelView = 'settings';
+    void render();
   });
 
   app.querySelector('[data-av-toggle]')?.addEventListener('click', async () => {
@@ -470,6 +539,19 @@ function registerSidePanelWindowSync(): void {
 
 registerSidePanelWindowSync();
 
+document.addEventListener(
+  'click',
+  (e) => {
+    const back = (e.target as Element).closest('#tc-settings-back');
+    if (!back) return;
+    e.preventDefault();
+    e.stopPropagation();
+    panelView = 'home';
+    void render();
+  },
+  true,
+);
+
 window.addEventListener('pagehide', () => stopWebAuthPoll());
 
 void (async () => {
@@ -491,7 +573,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
       changes.tc_live ||
       changes.tc_vault_rules ||
       changes.tc_game_exclusions ||
-      changes.tc_session_token
+      changes.tc_session_token ||
+      changes.tc_risk_profile ||
+      changes.tc_demo
     ) {
       void render();
     }

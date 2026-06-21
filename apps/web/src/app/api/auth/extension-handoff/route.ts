@@ -1,7 +1,12 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-const apiBase = () => (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+const apiBase = () =>
+  (
+    process.env.NEXT_PUBLIC_API_URL ??
+    process.env.API_URL ??
+    'https://tiltcheck-api-production.up.railway.app'
+  ).replace(/\/$/, '');
 
 /** Lets the extension copy the web login session into chrome.storage (same Discord account).
  *  Returns the session JWT as JSON — any same-origin XSS on the web app can exfiltrate it.

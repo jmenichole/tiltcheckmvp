@@ -1,7 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import CasinoTrustCompare, {
+  CasinoTrustCompareBar,
+  MAX_COMPARE,
+} from '@/components/CasinoTrustCompare';
 import {
   ALL_CATEGORIES,
   CASINOS,
@@ -22,6 +26,17 @@ export default function CasinosPage() {
   const [page, setPage] = useState(1);
   const [liveScores, setLiveScores] = useState<LiveTrustScore[]>([]);
   const [liveSource, setLiveSource] = useState('unavailable');
+  const [compareSlugs, setCompareSlugs] = useState<string[]>([]);
+
+  const toggleCompare = useCallback((slug: string) => {
+    setCompareSlugs((prev) => {
+      if (prev.includes(slug)) return prev.filter((s) => s !== slug);
+      if (prev.length >= MAX_COMPARE) return prev;
+      return [...prev, slug];
+    });
+  }, []);
+
+  const clearCompare = useCallback(() => setCompareSlugs([]), []);
 
   useEffect(() => {
     fetch('/api/backend/rgaas/casino-scores', { cache: 'no-store' })
@@ -56,7 +71,8 @@ export default function CasinosPage() {
           <span className="brand-eyebrow">Public trust lookup</span>
           <h1 className="landing-hero-title">Look up the casino. Read the proof.</h1>
           <p className="landing-hero-subtitle">
-            Live feed: {liveSource}. Static grades always available when API is down.
+            Compare trust side by side — grades, flags, payout honesty — then install TiltCheck before
+            you deposit. Live feed: {liveSource}.
           </p>
           <label htmlFor="casino-search" className="sr-only">
             Search casinos
@@ -91,6 +107,13 @@ export default function CasinosPage() {
       </section>
       <section className="public-page-section px-4">
         <div className="landing-shell">
+          <CasinoTrustCompare
+            selectedSlugs={compareSlugs}
+            liveScores={liveScores}
+            onToggle={toggleCompare}
+            onClear={clearCompare}
+            onQuickCompare={setCompareSlugs}
+          />
           {filtered.length === 0 ? (
             <div className="public-page-card py-16 text-center">
               <p className="public-page-card__eyebrow">No matches</p>
@@ -118,23 +141,36 @@ export default function CasinosPage() {
             const grade = gradeFromNumericScore(score);
             const riskStyle = getRiskBadgeStyle(live?.riskLevel ?? casino.risk);
             return (
-              <Link key={casino.slug} href={`/casinos/${casino.slug}`} className="public-page-card">
-                <p className="public-page-card__eyebrow">{casino.category}</p>
-                <h3 className="public-page-card__title">{casino.name}</h3>
-                <p style={{ color: getScoreColor(score) }}>
-                  {grade} · {formatRiskLabel(live?.riskLevel ?? casino.risk)}
-                </p>
-                <span
-                  style={{
-                    fontSize: '0.65rem',
-                    color: riskStyle.color,
-                    border: `1px solid ${riskStyle.border}`,
-                    padding: '2px 6px',
-                  }}
+              <article key={casino.slug} className="public-page-card casino-card">
+                <Link href={`/casinos/${casino.slug}`} className="casino-card__link">
+                  <p className="public-page-card__eyebrow">{casino.category}</p>
+                  <h3 className="public-page-card__title">{casino.name}</h3>
+                  <p style={{ color: getScoreColor(score) }}>
+                    {grade} · {formatRiskLabel(live?.riskLevel ?? casino.risk)}
+                  </p>
+                  <span
+                    style={{
+                      fontSize: '0.65rem',
+                      color: riskStyle.color,
+                      border: `1px solid ${riskStyle.border}`,
+                      padding: '2px 6px',
+                    }}
+                  >
+                    {live ? 'LIVE' : 'STATIC'}
+                  </span>
+                </Link>
+                <button
+                  type="button"
+                  className={`btn btn-sm casino-card__compare${compareSlugs.includes(casino.slug) ? ' casino-card__compare--active' : ''}`}
+                  disabled={
+                    !compareSlugs.includes(casino.slug) && compareSlugs.length >= MAX_COMPARE
+                  }
+                  onClick={() => toggleCompare(casino.slug)}
+                  aria-pressed={compareSlugs.includes(casino.slug)}
                 >
-                  {live ? 'LIVE' : 'STATIC'}
-                </span>
-              </Link>
+                  {compareSlugs.includes(casino.slug) ? 'In compare' : '+ Compare'}
+                </button>
+              </article>
             );
           })}
         </div>
@@ -164,6 +200,11 @@ export default function CasinosPage() {
         ) : null}
         </div>
       </section>
+      <CasinoTrustCompareBar
+        selectedSlugs={compareSlugs}
+        onToggle={toggleCompare}
+        onClear={clearCompare}
+      />
     </main>
   );
 }

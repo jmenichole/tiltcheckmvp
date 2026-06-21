@@ -5139,3 +5139,250 @@ body.degen-background > * {
   background: rgba(23, 195, 178, 0.1);
   color: #9fe8de;
 }
+
+/* Casino trust compare (Trivago-shaped) */
+.casino-compare-intro {
+  margin-bottom: 1.5rem;
+}
+
+.casino-compare-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.casino-compare-quick__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.casino-compare-panel {
+  margin-bottom: 2rem;
+  padding: 1.25rem 1.35rem;
+  border-radius: 14px;
+  border: 1px solid rgba(23, 195, 178, 0.35);
+  background: linear-gradient(165deg, rgba(18, 22, 30, 0.95), rgba(10, 12, 16, 0.98));
+}
+
+.casino-compare-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.casino-compare-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.casino-compare-table {
+  width: 100%;
+  min-width: 520px;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.casino-compare-table th,
+.casino-compare-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+  text-align: left;
+}
+
+.casino-compare-table thead th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.casino-compare-table tbody th {
+  width: 8.5rem;
+  font-weight: 600;
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.casino-compare-table__name {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #f3f4f6;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.casino-compare-table__remove {
+  margin-top: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #6b7280;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.casino-compare-table__meta {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.casino-compare-table__badge {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #5eead4;
+}
+
+.casino-compare-table__risk {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.casino-compare-table__license {
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #b5c1cd;
+  max-width: 14rem;
+}
+
+.casino-compare-table__ok {
+  color: #5eead4;
+  font-size: 0.85rem;
+}
+
+.casino-compare-table__warn {
+  color: #fbbf24;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.casino-compare-table__flag {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  color: #fdba74;
+  line-height: 1.4;
+}
+
+.casino-compare-pillar {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 5rem;
+}
+
+.casino-compare-pillar__track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.casino-compare-pillar__fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.casino-compare-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.casino-compare-footnote {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.casino-compare-clear {
+  margin-top: 0.75rem;
+}
+
+.casino-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.casino-card__link {
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.casino-card__compare {
+  align-self: flex-start;
+}
+
+.casino-card__compare--active {
+  border-color: rgba(23, 195, 178, 0.55);
+  color: #17c3b2;
+}
+
+.casino-compare-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 40;
+  border-top: 1px solid rgba(23, 195, 178, 0.35);
+  background: rgba(10, 12, 16, 0.96);
+  backdrop-filter: blur(8px);
+  padding: 0.65rem 1rem;
+}
+
+.casino-compare-bar__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+}
+
+.casino-compare-bar__label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5eead4;
+}
+
+.casino-compare-bar__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+}
+
+.casino-compare-bar__chip {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(23, 195, 178, 0.4);
+  background: rgba(23, 195, 178, 0.08);
+  color: #e5e7eb;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}

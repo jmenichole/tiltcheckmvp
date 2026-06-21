@@ -16,8 +16,9 @@ describe('normalizeSessionCapConfig', () => {
     assert.equal(c.futureMeNote.length, 140);
   });
 
-  it('clamps duration 1-60', () => {
+  it('clamps duration 1-1440', () => {
     assert.equal(normalizeSessionCapConfig({ durationMinutes: 0 }).durationMinutes, 1);
-    assert.equal(normalizeSessionCapConfig({ durationMinutes: 99 }).durationMinutes, 60);
+    assert.equal(normalizeSessionCapConfig({ durationMinutes: 99 }).durationMinutes, 99);
+    assert.equal(normalizeSessionCapConfig({ durationMinutes: 2000 }).durationMinutes, 1440);
   });
 });

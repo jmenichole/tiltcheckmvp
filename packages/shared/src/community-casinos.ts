@@ -71,6 +71,29 @@ export const COMMUNITY_DEFAULT_MONITORED_CASINOS = COMMUNITY_DEFAULT_CASINOS
   .map(casino => casino.monitoredDomain)
   .filter((domain): domain is string => Boolean(domain));
 
+/** Extra hosts TiltCheck watches (not in community catalog). */
+export const ADDITIONAL_MONITORED_GAMBLING_HOSTS = ['nuts.gg'] as const;
+
+function normalizeHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/^www\./, '');
+}
+
+function hostMatchesDomain(hostname: string, domain: string): boolean {
+  const host = normalizeHost(hostname);
+  const bare = normalizeHost(domain);
+  return host === bare || host.endsWith(`.${bare}`);
+}
+
+/** True when the tab is a known sweepstakes / casino host we enforce on. */
+export function isMonitoredGamblingHost(hostname: string): boolean {
+  const host = hostname.trim();
+  if (!host) return false;
+  if (COMMUNITY_DEFAULT_MONITORED_CASINOS.some((domain) => hostMatchesDomain(host, domain))) {
+    return true;
+  }
+  return ADDITIONAL_MONITORED_GAMBLING_HOSTS.some((domain) => hostMatchesDomain(host, domain));
+}
+
 export function getCommunityDefaultCasinoPriority(name: string): number {
   return communityDefaultPriority.get(normalizeCasinoName(name)) ?? Number.MAX_SAFE_INTEGER;
 }

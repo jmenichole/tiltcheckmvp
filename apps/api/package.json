@@ -12,7 +12,7 @@
     "test": "vitest run --config tests/vitest.config.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.14.0",
+    "@hono/node-server": "^2.0.10",
     "@tiltcheck/db": "workspace:*",
     "@tiltcheck/shared": "workspace:*",
     "@tiltcheck/trust": "workspace:*",

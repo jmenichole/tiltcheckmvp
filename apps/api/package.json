@@ -16,7 +16,7 @@
     "@tiltcheck/db": "workspace:*",
     "@tiltcheck/shared": "workspace:*",
     "@tiltcheck/trust": "workspace:*",
-    "hono": "^4.12.25",
+    "hono": "^4.12.34",
     "jose": "^6.0.10"
   },
   "devDependencies": {

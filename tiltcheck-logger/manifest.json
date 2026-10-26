@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "TiltCheck (alpha): Logger + Mouth",
+  "version": "0.2.0",
+  "description": "Logs your play time on Bink and Nuts.gg. Stays on your machine. Export to CSV anytime.",
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "*://*.bink.bet/*",
+    "*://bink.bet/*",
+    "*://*.nuts.gg/*",
+    "*://nuts.gg/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.bink.bet/*",
+        "*://bink.bet/*",
+        "*://*.nuts.gg/*",
+        "*://nuts.gg/*"
+      ],
+      "js": [
+        "content.js",
+        "roast.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "TiltCheck Logger"
+  }
+}

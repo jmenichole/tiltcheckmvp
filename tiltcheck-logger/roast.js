@@ -1,4 +1,4 @@
-// TiltCheck Mouth v0.2: never blocks you. Talks shit, drops facts, offers a breather. You stay in control.
+// TiltCheck Mouth v0.3.2: never blocks you. Talks shit, drops facts, offers a breather. You stay in control.
 (() => {
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const LINES = {
@@ -27,8 +27,11 @@ const LINES = {
     "Winning and redepositing is how wins become 'I was up once.'"
   ],
   late: [
-    "It's {clock}. Nothing good happens on slots after midnight.",
-    "Late-night degen hours. Decision-making is on its last bar."
+    "It's {clock} and you've been on for {t}. No notes, just a vibe check: still fun?",
+    "{clock}. Not here to parent you. Just here to say 3am you and 3pm you have very different risk tolerances.",
+    "Hey night owl, {t} in at {clock}. Hydrate. The slot doesn't, and look how it turned out.",
+    "{clock} check-in: zero judgment, I'm literally a browser extension also awake right now.",
+    "It's {clock}. If you're having fun, carry on. If you're chasing, that's a tomorrow problem you can skip."
   ],
   praise: [
     "You slowed down. Huge. That's the whole game.",
@@ -93,9 +96,9 @@ function breather() {
   chrome.storage.onChanged.addListener(ch => { if (ch.hud) pull(); });
 })();
 // 1) Click speed: count clicks + spacebar in the last 10s. Clicks inside a provider's game iframe may not reach us.
-let clicks = [];
+let clicks = [], playClicks = 0;
 const hit = () => {
-  const now = Date.now(); clicks = clicks.filter(t => now - t < 10000); clicks.push(now);
+  playClicks++; const now = Date.now(); clicks = clicks.filter(t => now - t < 10000); clicks.push(now);
   if (clicks.length >= 12) { speedHits++; log('fast-clicks', clicks.length); toast(speedHits > 2 ? 'speed2' : 'speed', { n: clicks.length }, speedHits > 1); clicks = []; }
 };
 // Typing (chat, search, forms) never counts as betting.
@@ -112,7 +115,7 @@ setInterval(() => chrome.storage.local.get({ cur: null }, ({ cur }) => {
   if (!cur) return; const m = MIL.filter(x => cur.activeMs >= x).pop();
   if (m && !said.has(m)) { said.add(m); toast('time', { t: fmt(cur.activeMs) }, m >= 60*60000); }
   const h = new Date().getHours();
-  if (h >= 0 && h < 5 && !said.has('late')) { said.add('late'); toast('late', { clock: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }); }
+  if (h >= 0 && h < 5 && !said.has('late') && cur.activeMs >= 15*60000 && playClicks >= 30) { said.add('late'); toast('late', { t: fmt(cur.activeMs), clock: new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }); }
 }), 30000);
 // 3) Redeposit after cashout: watches URL + clicked button text
 const CASH = /withdraw|cash ?out|redeem/i, DEP = /deposit|buy coins|get coins|cashier/i;

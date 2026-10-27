@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><style>
-body{font:14px system-ui;background:#0b0b0f;color:#eee;width:280px;margin:0;padding:14px}
+body{font:14px system-ui;background:#0b0b0f;color:#eee;width:300px;margin:0;padding:14px}
 h1{font-size:15px;margin:0 0 8px}.big{font-size:28px;font-weight:700;color:#7CFF6B}
 .row{display:flex;justify-content:space-between;margin:4px 0;color:#bbb}
 button{width:100%;margin-top:10px;padding:8px;border:0;border-radius:8px;background:#7CFF6B;font-weight:700;cursor:pointer}
@@ -10,7 +10,10 @@ small{color:#777}</style>
 <div class="row"><span>Sessions today</span><b id="n">0</b></div>
 <div class="row"><span>Longest no-break run</span><b id="streak">0m</b></div>
 <div id="sites"></div>
+<h1 style="margin-top:14px">Bets (Bink)</h1>
+<div class="row"><span>Your Bink username</span><input id="user" placeholder="exact name" style="width:110px;background:#16161c;color:#eee;border:1px solid #333;border-radius:6px;padding:3px 6px"></div>
+<div id="bets"><small>Set your username, then play with the bets table showing on the game page.</small></div>
 <label class="row" style="cursor:pointer"><span>Show on-page tracker</span><input type="checkbox" id="hud"></label>
-<button id="csv">Export sessions CSV</button><button id="ev">Export events CSV</button>
+<button id="csv">Export sessions CSV</button><button id="ev">Export events CSV</button><button id="bcsv">Export bets CSV</button>
 <small>Stays on this computer. Nothing is uploaded.</small>
 <script src="popup.js"></script>

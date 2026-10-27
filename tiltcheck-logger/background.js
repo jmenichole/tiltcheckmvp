@@ -40,3 +40,16 @@ chrome.runtime.onMessage.addListener((m) => {
     await chrome.storage.local.set({ events });
   }).catch(() => {});
 });
+
+// Bets: serialized writes, dedupe by bet id
+let betQ = Promise.resolve();
+chrome.runtime.onMessage.addListener((m) => {
+  if (m?.type !== 'tc-bets') return;
+  betQ = betQ.then(async () => {
+    const { bets, betIds } = await chrome.storage.local.get({ bets: [], betIds: [] });
+    const ids = new Set(betIds);
+    for (const x of m.bets) if (!ids.has(x.id)) { ids.add(x.id); bets.push(x); }
+    if (bets.length > 50000) bets.splice(0, bets.length - 50000);
+    await chrome.storage.local.set({ bets, betIds: [...ids].slice(-50000) });
+  }).catch(() => {});
+});

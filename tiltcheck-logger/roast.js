@@ -45,20 +45,20 @@ function toast(kind, vars = {}, offerBreak = false) {
   lastToast = now;
   const msg = fill(pick(LINES[kind]), vars);
   log('toast:' + kind, msg);
-  const el = document.createElement('div');
+  const el = document.createElement('div'); el.dataset.tc = '1';
   el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483647;max-width:320px;background:#0b0b0f;color:#eee;border:2px solid #7CFF6B;border-radius:12px;padding:12px 14px;font:600 14px/1.35 system-ui;box-shadow:0 8px 30px #0008;cursor:default';
   el.innerHTML = `<div style="color:#7CFF6B;font-size:11px;letter-spacing:.08em;margin-bottom:4px">TILTCHECK</div><div></div>
-  <div style="display:flex;gap:8px;margin-top:10px">${offerBreak ? '<button data-b style="flex:1;padding:6px;border:0;border-radius:8px;background:#7CFF6B;font-weight:700;cursor:pointer">60s breather</button>' : ''}<button data-x style="flex:1;padding:6px;border:1px solid #444;border-radius:8px;background:none;color:#aaa;cursor:pointer">I'm good</button></div>`;
+  <div style="display:flex;gap:8px;margin-top:10px">${offerBreak ? '<button data-b tabindex="-1" style="flex:1;padding:6px;border:0;border-radius:8px;background:#7CFF6B;font-weight:700;cursor:pointer">60s breather</button>' : ''}<button data-x tabindex="-1" style="flex:1;padding:6px;border:1px solid #444;border-radius:8px;background:none;color:#aaa;cursor:pointer">I'm good</button></div>`;
   el.children[1].textContent = msg;
   document.body.appendChild(el);
   const kill = () => el.remove();
   el.querySelector('[data-x]').onclick = () => { log('dismiss', kind); kill(); };
   const b = el.querySelector('[data-b]');
-  if (b) b.onclick = () => { log('breather', kind); kill(); breather(); };
+  if (b) b.onclick = e => { if (e.detail === 0) return; log('breather', kind); kill(); breather(); };  // mouse click only, never a keypress
   setTimeout(kill, 12000);
 }
 function breather() {
-  const o = document.createElement('div');
+  const o = document.createElement('div'); o.dataset.tc = '1';
   o.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#0b0b0fee;color:#eee;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 22px system-ui;text-align:center';
   let s = 60;
   o.innerHTML = '<div>Breathe. In 4, hold 4, out 6.</div><div style="font-size:64px;color:#7CFF6B;margin:16px" data-c>60</div><button style="padding:8px 16px;border:1px solid #555;border-radius:8px;background:none;color:#aaa;font-size:14px;cursor:pointer">Skip (you chose this, you can leave)</button>';
@@ -72,8 +72,14 @@ const hit = () => {
   const now = Date.now(); clicks = clicks.filter(t => now - t < 10000); clicks.push(now);
   if (clicks.length >= 12) { speedHits++; log('fast-clicks', clicks.length); toast(speedHits > 2 ? 'speed2' : 'speed', { n: clicks.length }, speedHits > 1); clicks = []; }
 };
-addEventListener('click', hit, true);
-addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') hit(); }, true);
+// Typing (chat, search, forms) never counts as betting.
+const isTyping = el => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || !!el.closest?.('[contenteditable=""],[contenteditable="true"],[role=textbox]'));
+const ours = el => !!el?.closest?.('[data-tc]');
+addEventListener('click', e => { if (!isTyping(e.target) && !ours(e.target)) hit(); }, true);
+addEventListener('keydown', e => {
+  if (e.repeat || isTyping(e.target) || isTyping(document.activeElement)) return;
+  if (e.code === 'Space' || e.code === 'Enter') hit();
+}, true);
 // 2) Session time milestones (from the logger's current session)
 const MIL = [30, 60, 90, 120, 180, 240, 300].map(m => m * 60000); let said = new Set();
 setInterval(() => chrome.storage.local.get({ cur: null }, ({ cur }) => {

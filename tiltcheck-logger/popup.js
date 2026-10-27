@@ -30,3 +30,7 @@ document.getElementById('ev').onclick = () => chrome.storage.local.get({ events:
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
   a.download = `tiltcheck-events-${new Date().toISOString().slice(0,10)}.csv`; a.click();
 });
+
+const hb = document.getElementById('hud');
+chrome.storage.local.get({ hud: true }, ({ hud }) => { hb.checked = hud; });
+hb.onchange = () => chrome.storage.local.set({ hud: hb.checked });

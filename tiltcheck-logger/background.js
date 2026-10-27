@@ -17,12 +17,19 @@ async function step(m) {
   cur.paths[m.site + m.path] = (cur.paths[m.site + m.path] || 0) + dt;
   cur.longestStreakMs = Math.max(cur.longestStreakMs, m.t - cur.streakStart);
   await chrome.storage.local.set({ sessions, cur });
+  badge(cur);
+}
+function badge(cur) {
+  const m = cur ? Math.floor(cur.activeMs / 60000) : 0;
+  const txt = !cur ? '' : m >= 60 ? Math.floor(m / 60) + 'h' : String(m || '0');
+  chrome.action.setBadgeText({ text: txt }).catch(() => {});
+  chrome.action.setBadgeBackgroundColor({ color: m >= 120 ? '#FF5A5A' : m >= 60 ? '#FFB020' : '#2EBD4E' }).catch(() => {});
 }
 function close(c) { return { ...c, end: c.last, wallMs: c.last - c.start }; }
 chrome.alarms.create('tc-sweep', { periodInMinutes: 5 });
 chrome.alarms.onAlarm.addListener(async () => {
   let { sessions, cur } = await get();
-  if (cur && Date.now() - cur.last > GAP) { sessions.push(close(cur)); await chrome.storage.local.set({ sessions, cur: null }); }
+  if (cur && Date.now() - cur.last > GAP) { sessions.push(close(cur)); await chrome.storage.local.set({ sessions, cur: null }); badge(null); }
 });
 chrome.runtime.onMessage.addListener((m) => {
   if (m?.type !== 'tc-event') return;

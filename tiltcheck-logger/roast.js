@@ -66,6 +66,32 @@ function breather() {
   const iv = setInterval(() => { s--; o.querySelector('[data-c]').textContent = s; if (s <= 0) { clearInterval(iv); o.remove(); toast('praise'); } }, 1000);
   o.querySelector('button').onclick = () => { clearInterval(iv); o.remove(); log('breather-skip', 60 - s); };
 }
+// 0) Always-on HUD pill so you can see it's working. Click to shrink to a dot. Hide it from the toolbar popup.
+(function hud() {
+  const p = document.createElement('div'); p.dataset.tc = '1';
+  p.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:2147483646;background:#0b0b0fdd;color:#ddd;border:1px solid #7CFF6B66;border-radius:999px;padding:5px 11px;font:600 12px/1.2 system-ui;cursor:pointer;user-select:none;box-shadow:0 4px 14px #0006';
+  let mini = false;
+  p.onclick = () => { mini = !mini; draw(); };
+  let state = { cur: null, nudges: 0, on: true };
+  function draw() {
+    if (!state.on) { p.remove(); return; }
+    if (!p.isConnected) document.body.appendChild(p);
+    const m = state.cur ? Math.floor(state.cur.activeMs / 60000) : 0;
+    const dot = m >= 120 ? '#FF5A5A' : m >= 60 ? '#FFB020' : '#7CFF6B';
+    p.title = 'TiltCheck is watching this session. Click to shrink.';
+    p.innerHTML = mini ? `<span style="color:${dot}">●</span>`
+      : `<span style="color:${dot}">●</span> TiltCheck · ${state.cur ? fmt(state.cur.activeMs) : 'warming up'} · ${state.nudges} nudge${state.nudges === 1 ? '' : 's'}`;
+  }
+  function pull() {
+    chrome.storage.local.get({ cur: null, events: [], hud: true }, ({ cur, events, hud }) => {
+      const since = cur ? cur.start : Date.now();
+      state = { cur, on: hud, nudges: events.filter(e => e.t >= since && String(e.kind).startsWith('toast:')).length };
+      draw();
+    });
+  }
+  pull(); setInterval(pull, 15000);
+  chrome.storage.onChanged.addListener(ch => { if (ch.hud) pull(); });
+})();
 // 1) Click speed: count clicks + spacebar in the last 10s. Clicks inside a provider's game iframe may not reach us.
 let clicks = [];
 const hit = () => {

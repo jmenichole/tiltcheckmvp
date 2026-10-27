@@ -48,7 +48,7 @@ function toast(kind, vars = {}, offerBreak = false) {
   const el = document.createElement('div'); el.dataset.tc = '1';
   el.style.cssText = 'position:fixed;right:18px;bottom:18px;z-index:2147483647;max-width:320px;background:#0b0b0f;color:#eee;border:2px solid #7CFF6B;border-radius:12px;padding:12px 14px;font:600 14px/1.35 system-ui;box-shadow:0 8px 30px #0008;cursor:default';
   el.innerHTML = `<div style="color:#7CFF6B;font-size:11px;letter-spacing:.08em;margin-bottom:4px">TILTCHECK</div><div></div>
-  <div style="display:flex;gap:8px;margin-top:10px">${offerBreak ? '<button data-b tabindex="-1" style="flex:1;padding:6px;border:0;border-radius:8px;background:#7CFF6B;font-weight:700;cursor:pointer">60s breather</button>' : ''}<button data-x tabindex="-1" style="flex:1;padding:6px;border:1px solid #444;border-radius:8px;background:none;color:#aaa;cursor:pointer">I'm good</button></div>`;
+  <div style="display:flex;gap:8px;margin-top:10px">${offerBreak ? '<button data-b tabindex="-1" style="flex:1;padding:6px;border:0;border-radius:8px;background:#7CFF6B;color:#0b0b0f !important;font:800 13px system-ui;text-shadow:none;cursor:pointer">60s breather</button>' : ''}<button data-x tabindex="-1" style="flex:1;padding:6px;border:1px solid #444;border-radius:8px;background:none;color:#ccc !important;font:600 13px system-ui;cursor:pointer">I'm good</button></div>`;
   el.children[1].textContent = msg;
   document.body.appendChild(el);
   const kill = () => el.remove();

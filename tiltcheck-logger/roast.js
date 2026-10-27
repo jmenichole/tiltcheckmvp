@@ -101,12 +101,16 @@ const hit = () => {
   playClicks++; const now = Date.now(); clicks = clicks.filter(t => now - t < 10000); clicks.push(now);
   if (clicks.length >= 12) { speedHits++; log('fast-clicks', clicks.length); toast(speedHits > 2 ? 'speed2' : 'speed', { n: clicks.length }, speedHits > 1); clicks = []; }
 };
-// Typing (chat, search, forms) never counts as betting.
-const isTyping = el => !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || !!el.closest?.('[contenteditable=""],[contenteditable="true"],[role=textbox]'));
-const ours = el => !!el?.closest?.('[data-tc]');
-addEventListener('click', e => { if (!isTyping(e.target) && !ours(e.target)) hit(); }, true);
+// Typing (chat, search, forms) never counts as betting. Checks shadow DOM too, and any typing rhythm.
+const editable = el => !!el && el.nodeType === 1 && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || /^(textbox|searchbox|combobox)$/.test(el.getAttribute?.('role') || '') || (el.getAttribute?.('contenteditable') ?? 'false') !== 'false');
+const deepActive = () => { let a = document.activeElement; while (a?.shadowRoot?.activeElement) a = a.shadowRoot.activeElement; return a; };
+const inEditable = e => (e.composedPath ? e.composedPath() : [e.target]).some(editable) || editable(deepActive());
+const ours = e => (e.composedPath ? e.composedPath() : [e.target]).some(n => n?.dataset?.tc);
+let lastTypeKey = 0;  // last time a letter/number/backspace was pressed anywhere
+addEventListener('click', e => { if (inEditable(e) || ours(e) || Date.now() - lastTypeKey < 1500) return; hit(); }, true);
 addEventListener('keydown', e => {
-  if (e.repeat || isTyping(e.target) || isTyping(document.activeElement)) return;
+  if (e.key.length === 1 && e.code !== 'Space' || e.key === 'Backspace') { lastTypeKey = Date.now(); return; }
+  if (e.repeat || inEditable(e) || Date.now() - lastTypeKey < 3000) return;   // Space/Enter right after typing = chat, not spins
   if (e.code === 'Space' || e.code === 'Enter') hit();
 }, true);
 // 2) Session time milestones (from the logger's current session)
